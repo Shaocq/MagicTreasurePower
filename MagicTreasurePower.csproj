@@ -1,0 +1,63 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <Nullable>disable</Nullable>
+        <LangVersion>latest</LangVersion>
+        <AssemblyName>MagicTreasurePower</AssemblyName>
+        <RootNamespace>MagicTreasurePower</RootNamespace>
+        <Version>0.1.0</Version>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+        <!-- 娓告垙瀹夎鐩綍锛堝寘鍚?Duckov.exe锛夛紱鍙敤 -p:DuckovPath="..." 瑕嗙洊 -->
+        <DuckovPath Condition="'$(DuckovPath)' == ''">E:\Steam\steamapps\common\Escape from Duckov</DuckovPath>
+        <SubPath>\Duckov_Data\Managed\</SubPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <!-- 娓告垙绋嬪簭闆嗭細缂栬瘧鏈熷紩鐢紝涓嶅鍒跺埌杈撳嚭鐩綍 -->
+        <Reference Include="$(DuckovPath)$(SubPath)TeamSoda.*">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="$(DuckovPath)$(SubPath)ItemStatsSystem.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="$(DuckovPath)$(SubPath)SodaLocalization.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="$(DuckovPath)$(SubPath)Sirenix.*">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="$(DuckovPath)$(SubPath)UniTask.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="$(DuckovPath)$(SubPath)Unity*">
+            <Private>False</Private>
+        </Reference>
+
+        <!--
+            鍓嶇疆銆孒armonyLib銆嶏紙宸ュ潑 3589088839锛夎繍琛屾椂杞藉叆鐨?0Harmony锛?            浠呯紪璇戞湡寮曠敤銆佷笉鍐呭祵銆佷笉闅忔湰 mod 鍒嗗彂銆?        -->
+        <Reference Include="lib\0Harmony.dll">
+            <Private>False</Private>
+        </Reference>
+    </ItemGroup>
+
+    <!-- 鍐呭祵娉曞疂鍥炬爣锛歀ogicalName 鐩存帴浣跨敤鏂囦欢鍚嶏紙浠ｇ爜閲屾寜 fty.png 绛夊悕瀛楄鍙栵級 -->
+    <ItemGroup>
+        <EmbeddedResource Include="resources\*.png" LogicalName="%(Filename)%(Extension)" />
+    </ItemGroup>
+
+    <!-- 鏋勫缓瀹岃嚜鍔ㄦ暣鐞嗘垚鍙姞杞界殑 mod 鏂囦欢澶癸細bin/Release/Mod/MagicTreasurePower/ -->
+    <Target Name="PackModFolder" AfterTargets="Build">
+        <ItemGroup>
+            <ModPayload Include="$(TargetPath)" />
+            <ModPayload Include="$(MSBuildProjectDirectory)\info.ini" />
+            <ModPayload Include="$(MSBuildProjectDirectory)\config.ini"
+                        Condition="Exists('$(MSBuildProjectDirectory)\config.ini')" />
+            <ModPayload Include="$(MSBuildProjectDirectory)\preview.png"
+                        Condition="Exists('$(MSBuildProjectDirectory)\preview.png')" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ModPayload)" DestinationFolder="$(OutputPath)Mod\$(AssemblyName)" SkipUnchangedFiles="false" />
+    </Target>
+
+</Project>
