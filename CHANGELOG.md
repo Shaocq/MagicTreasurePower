@@ -2,6 +2,14 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式。
 
+## [0.1.7] - 2026-10-24
+
+### 平衡调整
+
+- **六件法宝重量从 9 下调为 0.2**（`TreasureCatalog.cs` 的 `Weight`）。法宝本身提供强度较高的能力，
+  重量占比过高会让玩家为了带法宝牺牲太多负重，统一降至 0.2。
+- 同步更新 `info.ini` 的物品信息文案与 `README.md` 的数值说明。
+
 ## [0.1.6] - 2026-10-24
 
 ### 修正

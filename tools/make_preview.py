@@ -184,7 +184,7 @@ def main() -> None:
     foot_font = font(20 * S, bold=False)
     draw.text(
         (W // 2, H - 76),
-        "六件法宝 · 品质 7 · 价值 999,999 · 重量 9",
+        "六件法宝 · 品质 7 · 价值 999,999 · 重量 0.2",
         font=foot_font,
         fill=FOOT_COLOR + (255,),
         anchor="ma",
