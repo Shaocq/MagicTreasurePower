@@ -23,8 +23,8 @@ namespace MagicTreasurePower.Quests
         /// <summary>单局开局不带备用弹药、击杀 N 名敌人并成功撤离。</summary>
         NoAmmoRunKillsEvac = 2,
 
-        /// <summary>单局被毒/减速/诅咒命中 N 次，并带着异常状态撤离。</summary>
-        DebuffHitsEvac = 3,
+        /// <summary>单局内受到 N 种不同的异常状态（不要求撤离时仍带着异常）。</summary>
+        DebuffKinds = 3,
 
         /// <summary>单局血量降到 10% 以下 N 次、不阵亡并撤离。</summary>
         LowHpNoDeathEvac = 4,
@@ -227,7 +227,7 @@ namespace MagicTreasurePower.Quests
                     case TreasureObjective.NoAmmoRunKillsEvac:
                         progress = $"单局不带备用弹药击杀 {_runKills}/{requireCount} 名敌人并成功撤离";
                         break;
-                    case TreasureObjective.DebuffHitsEvac:
+                    case TreasureObjective.DebuffKinds:
                         progress = $"单局受到 {_runDebuffHits}/{requireCount} 种不同的异常";
                         break;
                     case TreasureObjective.LowHpNoDeathEvac:
@@ -642,7 +642,7 @@ namespace MagicTreasurePower.Quests
                     return;
                 }
 
-                if (objective != TreasureObjective.DebuffHitsEvac)
+                if (objective != TreasureObjective.DebuffKinds)
                     return;
 
                 if (!DebuffIds.Contains(buffId))
@@ -704,7 +704,7 @@ namespace MagicTreasurePower.Quests
                             _done = true;
                         break;
 
-                    case TreasureObjective.DebuffHitsEvac:
+                    case TreasureObjective.DebuffKinds:
                         // 只要本局受过 N 种异常即可，不要求撤离时仍带着异常
                         if (run && _runDebuffHits >= requireCount)
                             _done = true;

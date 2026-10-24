@@ -304,9 +304,9 @@ namespace MagicTreasurePower.Quests
                     return new[] { Spec(TreasureObjective.NoAmmoRunKillsEvac, 7) };
 
                 case 2:
-                    // 单局内受到 3 种不同的异常（不含出血/骨折/创伤，点燃/恶心/燃烧也算），
-                    // 并且撤离时身上还带着其中一种异常
-                    return new[] { Spec(TreasureObjective.DebuffHitsEvac, 3) };
+                    // 单局内受到 3 种不同的异常（不含出血/骨折/创伤，点燃/恶心/燃烧也算）；
+                    // 不要求在撤离时仍带着异常，凑够种类即算完成
+                    return new[] { Spec(TreasureObjective.DebuffKinds, 3) };
 
                 case 3:
                     // 单局血量降到 10% 以下两次、不阵亡并撤离
@@ -352,8 +352,8 @@ namespace MagicTreasurePower.Quests
                     return "成功撤离一次。";
                 case TreasureObjective.NoAmmoRunKillsEvac:
                     return $"本局开局不带备用弹药，击杀至少 {spec.Count} 名敌人，并成功撤离。";
-                case TreasureObjective.DebuffHitsEvac:
-                    return $"单局内受到 {spec.Count} 种不同的异常状态（不包含出血、骨折、创伤）。";
+                case TreasureObjective.DebuffKinds:
+                    return $"单局内受到 {spec.Count} 种不同的异常状态（不包含出血、骨折、创伤），不需要在撤离时仍带着异常。";
                 case TreasureObjective.LowHpNoDeathEvac:
                     return $"单局血量降到 {spec.LowHpThreshold * 100f:0}% 以下至少 {spec.Count} 次，本局不阵亡，并成功撤离。";
                 case TreasureObjective.DamageTakenEvac:
