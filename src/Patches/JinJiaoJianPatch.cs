@@ -172,30 +172,7 @@ namespace MagicTreasurePower.Patches
     {
         /// <summary>随机获得的增益时长按法宝等级取值（见 <see cref="TreasureBalance"/>）。</summary>
 
-        /// <summary>
-        /// 可移除的异常状态（原版 ID）。已排除：
-        /// 1002 出血变体、1130 食物中毒、2001 缺氧、1129 机器入侵、1032 饥饿、
-        /// 2101 寒冷、2102 失温、2201 冻伤、1131 浸水（环境 / 系统持续施加）、
-        /// 1 脱水、1022/1023/1024 负重三档，
-        /// 1111/1112/1117 空间系、1127 冻结、1128 纳米机器（连锁上游），
-        /// 以及 1062/1063 变异病毒与变异（剧情机制）。
-        /// </summary>
-        private static readonly int[] RemovableDebuffs =
-        {
-            1001,                                 // 出血
-            1003,                                 // 骨折
-            1004,                                 // 创伤
-            1016,                                 // 萎靡
-            1041, 1042,                           // 震慑（长 / 短）
-            1061,                                 // 中毒
-            1071,                                 // 触电
-            1081,                                 // 疼痛
-            1121, 1125,                           // 点燃 / 燃烧
-            1122,                                 // 弱毒
-            1123,                                 // 恶心
-            1124,                                 // 害怕
-            1126,                                 // 冰冻
-        };
+        // 可移除的异常状态清单在 TreasureDebuffs.Ids（与定海珠共用，见 src/Treasures/TreasureDebuffs.cs）。
 
         /// <summary>
         /// 可随机获得的增益（原版 ID）。已排除：
@@ -244,7 +221,7 @@ namespace MagicTreasurePower.Patches
             List<Buff> debuffs = new List<Buff>();
             foreach (Buff buff in manager.Buffs)
             {
-                if (buff != null && Contains(RemovableDebuffs, buff.ID))
+                if (buff != null && TreasureDebuffs.Contains(buff.ID))
                     debuffs.Add(buff);
             }
 
@@ -312,17 +289,6 @@ namespace MagicTreasurePower.Patches
             }
 
             return null;
-        }
-
-        private static bool Contains(int[] ids, int id)
-        {
-            for (int i = 0; i < ids.Length; i++)
-            {
-                if (ids[i] == id)
-                    return true;
-            }
-
-            return false;
         }
 
         /// <summary>

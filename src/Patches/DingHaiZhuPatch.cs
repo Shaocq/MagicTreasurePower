@@ -18,6 +18,8 @@ namespace MagicTreasurePower.Patches
     /// <item>受到伤害时按等级概率完全免疫本次伤害（Lv.1~7：8% / 10% / 12% / 14% / 16% / 18% / 20%）；</item>
     /// <item>免死：每场战局可触发 1 次，Lv.4 起 2 次，Lv.7 起 3 次；受到致命伤害时免疫死亡，
     /// 生命值锁定为 1 点，持续 5 秒（全等级固定）；换图（关卡初始化）后次数重置。</item>
+    /// <item>免死触发瞬间清空身上全部「金蛟剪可清除」类目的异常状态，护体期间也不会再被挂上
+    /// 同类异常（类目见 <see cref="TreasureDebuffs"/>）。</item>
     /// </list>
     ///
     /// <para><b>免死为什么做成 Buff：</b></para>
@@ -114,6 +116,9 @@ namespace MagicTreasurePower.Patches
                 _usedThisRaid++;
                 value = 1f;
 
+                // 触发瞬间清空全部异常状态（类目与金蛟剪共用 TreasureDebuffs）
+                int cleared = TreasureDebuffs.ClearAll(main);
+
                 float duration = TreasureBalance.DingHaiZhuWardOf(level);
 
                 Buff ward = DingHaiZhuBuffs.GetDeathWardPrefab(duration);
@@ -122,11 +127,48 @@ namespace MagicTreasurePower.Patches
 
                 TreasureNotice.Show(
                     TreasureIds.DingHaiZhu,
-                    string.Format("免疫本次死亡（本局剩余 {0} 次）", allowed - _usedThisRaid));
+                    cleared > 0
+                        ? string.Format("免疫本次死亡，清除 {0} 种异常（本局剩余 {1} 次）",
+                            cleared, allowed - _usedThisRaid)
+                        : string.Format("免疫本次死亡（本局剩余 {0} 次）", allowed - _usedThisRaid));
             }
             catch (Exception e)
             {
                 Diag.Report("定海珠免死触发失败", e);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 护体期间免疫异常状态：所有「金蛟剪可清除」类目的 Buff（<see cref="TreasureDebuffs"/>）
+    /// 在护体 Buff 生效时一律加不上去。类目与金蛟剪完全共用同一张表。
+    /// </summary>
+    [HarmonyPatch(typeof(CharacterBuffManager), nameof(CharacterBuffManager.AddBuff))]
+    internal static class DingHaiZhuWardDebuffBlockPatch
+    {
+        /// <summary>返回 false 表示本次添加作废（连层数刷新都不做）。</summary>
+        [HarmonyPrefix]
+        private static bool BeforeAddBuff(CharacterBuffManager __instance, Buff buffPrefab)
+        {
+            try
+            {
+                if (__instance == null || buffPrefab == null)
+                    return true;
+
+                if (!TreasureDebuffs.Contains(buffPrefab.ID))
+                    return true;
+
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null || __instance.Master != main)
+                    return true;
+
+                // 只有护体窗口内才拦截；平时照常挂异常
+                return !main.HasBuff(DingHaiZhuBuffs.DeathWardId);
+            }
+            catch (Exception e)
+            {
+                Diag.Report("定海珠护体期间拦截异常状态失败", e);
+                return true;
             }
         }
     }
@@ -192,7 +234,7 @@ namespace MagicTreasurePower.Patches
                 LocalizationManager.SetOverrideText(NameKey, "定海珠·护体");
                 LocalizationManager.SetOverrideText(
                     DescKey,
-                    "受到致命伤害时触发，生命值锁定为 1 点，无法继续下降。");
+                    "受到致命伤害时触发：清除自身全部异常状态，生命值锁定为 1 点；持续期间不会受到任何异常状态影响。");
 
                 _prefab = clone;
                 return _prefab;

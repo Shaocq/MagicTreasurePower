@@ -116,7 +116,8 @@ namespace MagicTreasurePower.Treasures
                            " 概率免疫本次伤害。每场战局中，受到致命伤害时可免疫死亡 " +
                            Gold(DingHaiZhuSaves[Index(level)] + " 次") +
                            "：生命值锁定为 1 点，持续 " +
-                           Gold(DingHaiZhuWardSeconds + " 秒") + "；换图后重新可用。";
+                           Gold(DingHaiZhuWardSeconds + " 秒") +
+                           "，触发时清除自身全部异常状态，护体期间免疫异常状态；换图后重新可用。";
 
                 case TreasureIds.HunYuanJinDou:
                     return "每次射击有 " + Gold(HunYuanJinDouChance[Index(level)] + "%") +
