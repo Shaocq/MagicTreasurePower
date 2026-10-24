@@ -12,14 +12,18 @@ namespace MagicTreasurePower.Patches
 {
     /// <summary>
     /// 混元金斗：每次射击（每消耗一发弹匣子弹）投掷一次，
-    /// 命中则在**护甲结算之前**给本次射击的子弹额外附加
-    /// 「枪械基础伤害 × 1.5」的伤害（爆炸伤害不加成）。
+    /// 命中后额外造成「枪械基础伤害 × N」的真实伤害（爆炸伤害不加成）。
+    ///
+    /// <para><b>真实伤害的定义：</b></para>
+    /// 原版这一下伤害先正常结算（暴击、护甲、元素抗性、距离衰减全按原版）；
+    /// 结算完成后，再单独补一次 <c>DamageTypes.realDamage</c> 的伤害。
+    /// 这笔伤害在 <c>Health.Hurt</c> 里跳过护甲公式，同时关掉暴击与难度系数，
+    /// 因此不受护甲、元素抗性、暴击、距离衰减影响，也不会被目标防御类词条削减。
     ///
     /// <para><b>加的是固定值，不是倍率：</b></para>
     /// 「枪械基础伤害」取枪的 <c>Stat.BaseValue</c>，即不含配件加成、
     /// 子弹倍率与角色伤害加成的本体数值；霰弹枪按 <c>ShotCount</c> 均摊、
-    /// 穿透后每一段命中都带这笔值。这笔值与普通直击伤害一样会被暴击、
-    /// 距离衰减和目标护甲影响。
+    /// 穿透后每一段命中都补一次。
     ///
     /// <para><b>为什么把掷骰放在 <c>ItemAgent_Gun.TransToFire</c>：</b></para>
     /// 游戏里「弹匣里的子弹」只是一个整数计数（<c>ItemSetting_Gun.BulletCount</c>），
@@ -28,11 +32,11 @@ namespace MagicTreasurePower.Patches
     /// 本次射击的所有弹丸共享同一个结果，语义与「这一发子弹触发」一致，
     /// 换弹 / 退弹 / 读档 / 其它换弹 mod 都不会让判定错位。
     ///
-    /// <para><b>为什么加成放在 <c>Projectile.Init</c>：</b></para>
-    /// 直击伤害在开火瞬间按弹丸算好并写进 <c>ProjectileContext.damage</c>，
-    /// 命中时才由 <c>Health.Hurt</c> 依次乘暴击系数与护甲系数。在这里把固定值加到
-    /// <c>context.damage</c> 上，正好是「护甲结算前叠加、再一起被护甲削减」；
-    /// 既不会影响爆炸伤害，也不会碰到别处产生的弹道（按枪械设置实例逐一比对）。
+    /// <para><b>为什么在 <c>Projectile.Init</c> 只登记、不改进伤害：</b></para>
+    /// 直击伤害在开火瞬间算好并写进 <c>ProjectileContext.damage</c>，命中前改它
+    /// 只能做到「护甲结算前叠加」。改成结算后补真实伤害就只能在命中流程里做：
+    /// <c>DamageReceiver.Hurt</c> 的后置拿到「这一下已经结算完」的时机，
+    /// 再按登记的信息补一次真实伤害（见 <see cref="HunYuanJinDouTrueDamagePatch"/>）。
     /// </summary>
     [HarmonyPatch(typeof(ItemAgent_Gun), "TransToFire")]
     internal static class HunYuanJinDouShotPatch
@@ -158,8 +162,12 @@ namespace MagicTreasurePower.Patches
     }
 
     /// <summary>
-    /// 子弹初始化时套用混元金斗加成。只改直击伤害 <c>context.damage</c>，
-    /// 不碰 <c>context.explosionDamage</c>。
+    /// 子弹初始化时登记混元金斗的加成信息。
+    ///
+    /// <para>这里**不再改** <c>context.damage</c>：加成改成「结算后的真实伤害」，
+    /// 命中时由 <see cref="HunYuanJinDouTrueDamagePatch"/> 在本次伤害结算完成后
+    /// 单独补一次 <c>DamageTypes.realDamage</c> 伤害，因此不吃护甲、元素抗性、
+    /// 暴击与距离衰减。</para>
     /// </summary>
     [HarmonyPatch(typeof(Projectile), nameof(Projectile.Init), new[] { typeof(ProjectileContext) })]
     internal static class HunYuanJinDouProjectilePatch
@@ -169,6 +177,12 @@ namespace MagicTreasurePower.Patches
         {
             /// <summary>整次射击的附加伤害总量（命中提示用）。</summary>
             internal float TotalBonus;
+
+            /// <summary>这颗弹丸命中后要补的真实伤害（霰弹枪已按 ShotCount 均摊）。</summary>
+            internal float TrueDamage;
+
+            /// <summary>开火武器 TypeID，补伤害时沿用，便于伤害数字识别。</summary>
+            internal int WeaponItemId;
         }
 
         /// <summary>
@@ -233,18 +247,111 @@ namespace MagicTreasurePower.Patches
                 if (bonus <= 0f)
                     return;
 
-                // 固定值叠加，不乘倍率：命中时才会被暴击系数与护甲系数影响
-                __instance.context.damage += bonus;
-
-                // 登记加成信息：伤害数字上色与命中提示都靠它
+                // 只登记、不改 context.damage：加成改成命中结算后单独补的真实伤害
                 BoostedProjectiles.Add(__instance, new BonusData
                 {
                     TotalBonus = HunYuanJinDouShotPatch.TotalBonus,
+                    TrueDamage = bonus,
+                    WeaponItemId = context.fromWeaponItemID,
                 });
             }
             catch (Exception e)
             {
                 Diag.Report("混元金斗加成子弹伤害失败", e);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 标记「当前正在补真实伤害」。补伤害本身会再走一次 <c>DamageReceiver.Hurt</c>，
+    /// 用这个标记避免再次补伤害、也避免把命中类效果重复触发一遍。
+    /// </summary>
+    internal static class TreasureTrueDamageScope
+    {
+        [ThreadStatic]
+        private static bool _applying;
+
+        internal static bool Applying => _applying;
+
+        internal static void Enter()
+        {
+            _applying = true;
+        }
+
+        internal static void Exit()
+        {
+            _applying = false;
+        }
+    }
+
+    /// <summary>
+    /// 混元金斗的真实伤害：原版这一下的伤害正常结算完之后，
+    /// 再单独补一次 <c>DamageTypes.realDamage</c> 伤害。
+    /// 真实伤害在 <c>Health.Hurt</c> 里跳过护甲公式；同时关掉暴击与难度系数，
+    /// 所以它既不吃对方护甲 / 元素抗性，也不被暴击、距离衰减放大。
+    /// </summary>
+    [HarmonyPatch(typeof(DamageReceiver), nameof(DamageReceiver.Hurt))]
+    internal static class HunYuanJinDouTrueDamagePatch
+    {
+        [HarmonyPostfix]
+        private static void AfterHurt(DamageReceiver __instance, DamageInfo __0, bool __result)
+        {
+            if (!__result || TreasureTrueDamageScope.Applying)
+                return;
+
+            try
+            {
+                if (__instance == null || __0.isExplosion)
+                    return;
+
+                Projectile projectile = JinJiaoJianHitScopePatch.Current;
+                if (projectile == null)
+                    return;
+
+                if (!HunYuanJinDouProjectilePatch.TryGetBonus(projectile, out var bonus))
+                    return;
+
+                if (bonus.TrueDamage <= 0f)
+                    return;
+
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null || __0.fromCharacter != main)
+                    return;
+
+                if (__instance.IsMainCharacter || !Team.IsEnemy(main.Team, __instance.Team))
+                    return;
+
+                // 这一下已经把目标打死就不用再补，避免打尸体
+                if (__instance.IsDead || __instance.health == null)
+                    return;
+
+                DamageInfo info = new DamageInfo(main)
+                {
+                    damageType = DamageTypes.realDamage,
+                    ignoreArmor = true,
+                    ignoreDifficulty = true,
+                    damageValue = bonus.TrueDamage,
+                    fromWeaponItemID = bonus.WeaponItemId,
+                    damagePoint = __0.damagePoint,
+                    damageNormal = __0.damageNormal,
+                    isExplosion = false,
+                    critRate = 0f,
+                    critDamageFactor = 1f,
+                };
+
+                TreasureTrueDamageScope.Enter();
+                try
+                {
+                    __instance.Hurt(info);
+                }
+                finally
+                {
+                    TreasureTrueDamageScope.Exit();
+                }
+            }
+            catch (Exception e)
+            {
+                Diag.Report("混元金斗真实伤害结算失败", e);
             }
         }
     }

@@ -20,6 +20,9 @@ namespace MagicTreasurePower.Treasures
         /// <summary>额外那发子弹的伤害系数。</summary>
         private static readonly float[] FanTianYinExtraDamage = { 0.6f, 0.65f, 0.7f, 0.8f, 0.85f, 0.9f, 1f };
 
+        /// <summary>额外射出的子弹数量：Lv.4 起 2 发，Lv.7 起 3 发。</summary>
+        private static readonly int[] FanTianYinExtraCount = { 1, 1, 1, 2, 2, 2, 3 };
+
         // ---------------------------------------------------------------- 阴阳镜
 
         /// <summary>最终伤害减免（%）。</summary>
@@ -80,6 +83,7 @@ namespace MagicTreasurePower.Treasures
 
         internal static float FanTianYinChanceOf(int level) => FanTianYinChance[Index(level)] / 100f;
         internal static float FanTianYinExtraDamageOf(int level) => FanTianYinExtraDamage[Index(level)];
+        internal static int FanTianYinExtraCountOf(int level) => FanTianYinExtraCount[Index(level)];
         internal static float YinYangJingReductionOf(int level) => YinYangJingReduction[Index(level)] / 100f;
         internal static float DingHaiZhuNegateOf(int level) => DingHaiZhuNegate[Index(level)] / 100f;
         internal static float DingHaiZhuWardOf(int level) => DingHaiZhuWardSeconds;
@@ -104,7 +108,8 @@ namespace MagicTreasurePower.Treasures
             {
                 case TreasureIds.FanTianYin:
                     return "射击时，有 " + Gold(FanTianYinChance[Index(level)] + "%") +
-                           " 概率不消耗弹药，并额外射出 1 发子弹（该子弹造成 " +
+                           " 概率不消耗弹药，并额外射出 " +
+                           Gold(FanTianYinExtraCount[Index(level)] + " 发") + "子弹（每发造成 " +
                            Gold(Mathf_Round(FanTianYinExtraDamage[Index(level)] * 100f) + "%") + " 伤害）。";
 
                 case TreasureIds.YinYangJing:
@@ -121,8 +126,9 @@ namespace MagicTreasurePower.Treasures
 
                 case TreasureIds.HunYuanJinDou:
                     return "每次射击有 " + Gold(HunYuanJinDouChance[Index(level)] + "%") +
-                           " 概率使该次射击的子弹在护甲结算前额外附加「枪械基础伤害 × " +
-                           Gold(HunYuanJinDouMultiplier[Index(level)].ToString("0.0")) + "」的伤害。";
+                           " 概率，命中后额外造成「枪械基础伤害 × " +
+                           Gold(HunYuanJinDouMultiplier[Index(level)].ToString("0.0")) +
+                           "」的真实伤害：在本次伤害结算完成后单独生效，不受护甲、元素抗性、暴击与距离衰减影响。";
 
                 case TreasureIds.JinJiaoJian:
                     return "每次射击有 " + Gold(JinJiaoJianChance[Index(level)] + "%") +

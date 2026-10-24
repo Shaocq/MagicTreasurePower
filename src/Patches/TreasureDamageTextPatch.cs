@@ -156,6 +156,14 @@ namespace MagicTreasurePower.Patches
                 if (damageInfo.isExplosion)
                     return false;
 
+                // 混元金斗改成「结算后真实伤害」：直击那一下按原版白字，
+                // 只有补的那一次真实伤害数字用它的红色样式
+                if (_current.Style == DamageTextStyle.HunYuanJinDou
+                    && !TreasureTrueDamageScope.Applying)
+                {
+                    return false;
+                }
+
                 return damageInfo.fromCharacter == _current.FromCharacter
                     && damageInfo.fromWeaponItemID == _current.WeaponItemId;
             }

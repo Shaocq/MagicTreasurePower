@@ -56,6 +56,9 @@ namespace MagicTreasurePower.Patches
             internal Vector3 MuzzlePoint;
             internal Vector3 Direction;
             internal Vector3 FirstFrameStart;
+
+            /// <summary>本次要补射几发（Lv.4 起 2 发、Lv.7 起 3 发）。</summary>
+            internal int ExtraCount = 1;
         }
 
         private static ShotState _current;
@@ -134,7 +137,11 @@ namespace MagicTreasurePower.Patches
                 if (gun == null)
                     return;
 
-                _current = new ShotState { Gun = gun };
+                _current = new ShotState
+                {
+                    Gun = gun,
+                    ExtraCount = Mathf.Max(1, TreasureBalance.FanTianYinExtraCountOf(level)),
+                };
             }
             catch (Exception e)
             {
@@ -160,22 +167,28 @@ namespace MagicTreasurePower.Patches
                     return;
                 }
 
-                // 补射期间打标记：额外那发只归翻天印（不叠加混元金斗），
+                // 补射期间打标记：额外那几发只归翻天印（不叠加混元金斗），
                 // 伤害数字用翻天印自己的金色样式
+                int count = Mathf.Max(1, shot.ExtraCount);
                 _firingExtra = true;
 
                 try
                 {
-                    ShootOneBulletMethod.Invoke(
-                        __instance,
-                        new object[] { shot.MuzzlePoint, shot.Direction, shot.FirstFrameStart });
+                    for (int i = 0; i < count; i++)
+                    {
+                        ShootOneBulletMethod.Invoke(
+                            __instance,
+                            new object[] { shot.MuzzlePoint, shot.Direction, shot.FirstFrameStart });
+                    }
                 }
                 finally
                 {
                     _firingExtra = false;
                 }
 
-                TreasureNotice.Show(TreasureIds.FanTianYin, "节省弹药并额外射出一发");
+                TreasureNotice.Show(
+                    TreasureIds.FanTianYin,
+                    string.Format("节省弹药并额外射出 {0} 发", count));
             }
             catch (Exception e)
             {
