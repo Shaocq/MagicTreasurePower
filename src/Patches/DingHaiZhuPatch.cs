@@ -15,9 +15,9 @@ namespace MagicTreasurePower.Patches
     /// <summary>
     /// 定海珠：
     /// <list type="bullet">
-    /// <item>受到伤害时 50% 概率完全免疫本次伤害；</item>
-    /// <item>每场战局一次：受到致命伤害时免疫死亡，生命值锁定为 1 点，持续 5 秒；
-    /// 换图（关卡初始化）后重新可用。</item>
+    /// <item>受到伤害时按等级概率完全免疫本次伤害（Lv.1~7：8% / 10% / 12% / 14% / 16% / 18% / 20%）；</item>
+    /// <item>免死：每场战局可触发 1 次，Lv.4 起 2 次，Lv.7 起 3 次；受到致命伤害时免疫死亡，
+    /// 生命值锁定为 1 点，持续 5 秒（全等级固定）；换图（关卡初始化）后次数重置。</item>
     /// </list>
     ///
     /// <para><b>免死为什么做成 Buff：</b></para>
@@ -65,18 +65,19 @@ namespace MagicTreasurePower.Patches
     /// <summary>
     /// 免死：拦在 <c>CurrentHealth</c> 的 setter 上。
     /// 任何来源把血量压到 1 以下时：
-    /// 护体 Buff 生效中 → 直接锁回 1；否则本局首次 → 触发免死（血锁 1 + 挂 Buff）。
+    /// 护体 Buff 生效中 → 直接锁回 1；否则还有剩余次数 → 触发免死（血锁 1 + 挂 Buff + 次数 -1）。
+    /// 次数上限按法宝等级取（Lv.1~3：1 次；Lv.4~6：2 次；Lv.7：3 次）。
     /// </summary>
     [HarmonyPatch(typeof(Health), "set_CurrentHealth")]
     internal static class DingHaiZhuDeathSavePatch
     {
-        /// <summary>本场战局是否已经触发过免死。</summary>
-        private static bool _usedThisRaid;
+        /// <summary>本场战局已经触发过的免死次数。</summary>
+        private static int _usedThisRaid;
 
         /// <summary>换图 / 新关卡时重置（由 ModBehaviour 订阅关卡初始化事件调用）。</summary>
         internal static void ResetForNewRaid()
         {
-            _usedThisRaid = false;
+            _usedThisRaid = 0;
         }
 
         [HarmonyPrefix]
@@ -90,7 +91,8 @@ namespace MagicTreasurePower.Patches
                 if (__instance == null || !__instance.IsMainCharacterHealth)
                     return;
 
-                if (!TreasureSlots.IsEquipped(TreasureIds.DingHaiZhu))
+                Item treasure = TreasureSlots.GetEquippedItem(TreasureIds.DingHaiZhu);
+                if (treasure == null)
                     return;
 
                 CharacterMainControl main = CharacterMainControl.Main;
@@ -104,21 +106,23 @@ namespace MagicTreasurePower.Patches
                     return;
                 }
 
-                if (_usedThisRaid)
+                int level = TreasureProgression.GetLevel(treasure);
+                int allowed = TreasureBalance.DingHaiZhuSavesOf(level);
+                if (_usedThisRaid >= allowed)
                     return;
 
-                _usedThisRaid = true;
+                _usedThisRaid++;
                 value = 1f;
 
-                Item treasure = TreasureSlots.GetEquippedItem(TreasureIds.DingHaiZhu);
-                float duration = TreasureBalance.DingHaiZhuWardOf(
-                    TreasureProgression.GetLevel(treasure));
+                float duration = TreasureBalance.DingHaiZhuWardOf(level);
 
                 Buff ward = DingHaiZhuBuffs.GetDeathWardPrefab(duration);
                 if (ward != null)
                     main.AddBuff(ward, main);
 
-                TreasureNotice.Show(TreasureIds.DingHaiZhu, "免疫本次死亡");
+                TreasureNotice.Show(
+                    TreasureIds.DingHaiZhu,
+                    string.Format("免疫本次死亡（本局剩余 {0} 次）", allowed - _usedThisRaid));
             }
             catch (Exception e)
             {

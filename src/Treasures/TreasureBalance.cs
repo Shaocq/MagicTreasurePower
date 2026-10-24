@@ -27,11 +27,14 @@ namespace MagicTreasurePower.Treasures
 
         // ---------------------------------------------------------------- 定海珠
 
-        /// <summary>免伤概率（%）。</summary>
-        private static readonly int[] DingHaiZhuNegate = { 4, 5, 6, 7, 8, 9, 10 };
+        /// <summary>免伤概率（%）：8% 起，每级 +2%。</summary>
+        private static readonly int[] DingHaiZhuNegate = { 8, 10, 12, 14, 16, 18, 20 };
 
-        /// <summary>免死锁血时长（秒）。</summary>
-        private static readonly float[] DingHaiZhuWard = { 3f, 3f, 4f, 4f, 4f, 5f, 5f };
+        /// <summary>免死锁血时长（秒）：全等级统一 5 秒。</summary>
+        internal const float DingHaiZhuWardSeconds = 5f;
+
+        /// <summary>每场战局的免死次数：基础 1 次，Lv.4 起 2 次，Lv.7 起 3 次。</summary>
+        private static readonly int[] DingHaiZhuSaves = { 1, 1, 1, 2, 2, 2, 3 };
 
         // ---------------------------------------------------------------- 混元金斗
 
@@ -79,7 +82,8 @@ namespace MagicTreasurePower.Treasures
         internal static float FanTianYinExtraDamageOf(int level) => FanTianYinExtraDamage[Index(level)];
         internal static float YinYangJingReductionOf(int level) => YinYangJingReduction[Index(level)] / 100f;
         internal static float DingHaiZhuNegateOf(int level) => DingHaiZhuNegate[Index(level)] / 100f;
-        internal static float DingHaiZhuWardOf(int level) => DingHaiZhuWard[Index(level)];
+        internal static float DingHaiZhuWardOf(int level) => DingHaiZhuWardSeconds;
+        internal static int DingHaiZhuSavesOf(int level) => DingHaiZhuSaves[Index(level)];
         internal static float HunYuanJinDouChanceOf(int level) => HunYuanJinDouChance[Index(level)] / 100f;
         internal static float HunYuanJinDouMultiplierOf(int level) => HunYuanJinDouMultiplier[Index(level)];
         internal static float JinJiaoJianChanceOf(int level) => JinJiaoJianChance[Index(level)] / 100f;
@@ -109,8 +113,10 @@ namespace MagicTreasurePower.Treasures
 
                 case TreasureIds.DingHaiZhu:
                     return "受到伤害时有 " + Gold(DingHaiZhuNegate[Index(level)] + "%") +
-                           " 概率免疫本次伤害。每场战局中，受到致命伤害时可免疫一次死亡：生命值锁定为 1 点，持续 " +
-                           Gold(DingHaiZhuWard[Index(level)] + " 秒") + "；换图后重新可用。";
+                           " 概率免疫本次伤害。每场战局中，受到致命伤害时可免疫死亡 " +
+                           Gold(DingHaiZhuSaves[Index(level)] + " 次") +
+                           "：生命值锁定为 1 点，持续 " +
+                           Gold(DingHaiZhuWardSeconds + " 秒") + "；换图后重新可用。";
 
                 case TreasureIds.HunYuanJinDou:
                     return "每次射击有 " + Gold(HunYuanJinDouChance[Index(level)] + "%") +

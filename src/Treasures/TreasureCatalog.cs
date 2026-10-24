@@ -63,7 +63,7 @@ namespace MagicTreasurePower.Treasures
                 ConstantName = nameof(TreasureIds.DingHaiZhu),
                 DisplayName = "定海珠",
                 Description = "赵公明之宝，共二十四颗。祭起时碧海翻涛，宝珠化作流光，专打顶上三花。",
-                EffectText = "受到伤害时，有 10% 概率免疫本次伤害。每场战局中，受到致命伤害时可免疫一次死亡：生命值锁定为 1 点，持续 5 秒；换图后重新可用。",
+                EffectText = "受到伤害时，有 20% 概率免疫本次伤害。每场战局中，受到致命伤害时可免疫死亡 3 次：生命值锁定为 1 点，持续 5 秒；换图后重新可用。",
                 ResourceName = "dhz.png",
                 Weight = 9f,
                 Value = 999999,

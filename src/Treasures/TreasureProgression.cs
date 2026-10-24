@@ -10,8 +10,8 @@ namespace MagicTreasurePower.Treasures
     /// 因此**每件法宝实例各自独立升级**，复制 / 掉落 / 放背包都不会丢失。
     ///
     /// <para><b>规则：</b></para>
-    /// 默认 1 级，上限 7 级；升级经验依次为 132 / 168 / 228 / 312 / 420 / 552。
-    /// 击杀普通敌人 +1、精英 +3、BOSS +5（见 <see cref="Patches.TreasureKillExpPatch"/>）。
+    /// 默认 1 级，上限 7 级；升级经验依次为 100 / 135 / 198 / 289 / 408 / 555。
+    /// 击杀普通敌人 +1、精英 +4、BOSS +9（见 <see cref="Patches.TreasureKillExpPatch"/>）。
     /// </summary>
     internal static class TreasureProgression
     {
@@ -20,7 +20,7 @@ namespace MagicTreasurePower.Treasures
 
         /// <summary>
         /// 升到下一级所需经验（下标 = 当前等级 - 1）。
-        /// 曲线为二次递增，二阶差值固定 28：100 / 135 / 198 / 289 / 408 / 555，累计 1685。
+        /// 曲线为二次递增：100 / 135 / 198 / 289 / 408 / 555，累计 1685。
         /// </summary>
         private static readonly int[] RequiredExp = { 100, 135, 198, 289, 408, 555 };
 
