@@ -297,8 +297,8 @@ namespace MagicTreasurePower.Quests
                     //     Spec(TreasureObjective.EliteKillsTotal, 10),
                     //     Spec(TreasureObjective.EvacuateOnce, 1),
                     // };
-                    // 击杀 5 种不同的 BOSS（同一种 BOSS 重复击杀只算一次）
-                    return new[] { Spec(TreasureObjective.BossKillsTotal, 5, distinctBosses: true) };
+                    // 击杀 3 种不同的 BOSS（同一种 BOSS 重复击杀只算一次）
+                    return new[] { Spec(TreasureObjective.BossKillsTotal, 3, distinctBosses: true) };
 
                 case 1:
                     return new[] { Spec(TreasureObjective.NoAmmoRunKillsEvac, 7) };
