@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""生成 mod 预览图：六件法宝 3×2 展示。
+"""生成 mod 预览图：七件法宝 4×2 展示。
 
 用法（在工程文件夹「法宝之力」下）：
-    py tools/make_preview.py
+    python tools/make_preview.py
 
-输出：法宝之力/preview.png（512×512），图标取自 resources/ 下六张 PNG。
+输出：法宝之力/preview.png（512×512），图标取自 resources/ 下的 PNG。
 素材本身是 448×448 的透明底图，直接叠加到深色底上。
 """
 
@@ -30,6 +30,7 @@ TREASURES = [
     ("混元金斗", "hyjd.png"),
     ("金铰剪", "jjj.png"),
     ("九龙离火罩", "jllhz.png"),
+    ("火眼金睛", "hyjj.png"),
 ]
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -124,19 +125,25 @@ def main() -> None:
     draw.line([(W // 2 - half, line_y), (W // 2 + half, line_y)], fill=GOLD + (140,), width=2)
     diamond(draw, W // 2, line_y, 7 * S, GOLD + (220,))
 
-    # 3×2 网格
+    # 4×2 网格（七件法宝，最后一格留空）
     margin = 48
     gap = 20
-    cols, rows = 3, 2
+    cols, rows = 4, 2
     cell_w = (W - margin * 2 - gap * (cols - 1)) // cols
-    cell_h = 330
+    cell_h = 268
     grid_top = 222
-    icon_size = 220
-    name_font = font(26 * S)
+    icon_size = 180
+    name_font = font(18 * S)
 
     for index, (name, resource) in enumerate(TREASURES):
         row, col = divmod(index, cols)
-        x = margin + col * (cell_w + gap)
+
+        # 最后一行不满时居中，避免右下角空出一格
+        row_start = row * cols
+        row_count = min(cols, len(TREASURES) - row_start)
+        offset = (cols - row_count) * (cell_w + gap) / 2
+
+        x = int(margin + offset + col * (cell_w + gap))
         y = grid_top + row * (cell_h + gap)
 
         # 单元格底板：半透明提亮 + 金色描边（必须在独立图层上混合）
@@ -184,7 +191,7 @@ def main() -> None:
     foot_font = font(20 * S, bold=False)
     draw.text(
         (W // 2, H - 76),
-        "六件法宝 · 品质 7 · 价值 999,999 · 重量 0.2",
+        "七件法宝 · 品质 7 · 价值 999,999 · 重量 0.2",
         font=foot_font,
         fill=FOOT_COLOR + (255,),
         anchor="ma",

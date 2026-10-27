@@ -81,6 +81,9 @@ namespace MagicTreasurePower
                 // 提前建好提示框（字体扫描 / 贴图生成），避免首次触发时卡一下
                 UI.TreasureNotice.Prewarm();
 
+                // 火眼金睛：进入战局后扫描全场物资箱（只在本局装备了该法宝时生效）
+                HuoYanJinJingEffect.Subscribe();
+
                 // 换图 / 新关卡时重置定海珠的「每局一次免死」
                 if (!_levelHookInstalled)
                 {
@@ -105,8 +108,14 @@ namespace MagicTreasurePower
                 // 把任务模板从 QuestCollection 里摘掉，避免重载后集合里留下已销毁的引用
                 TreasureQuestRegistrar.UnregisterAll();
 
-                // 宝箱界面是独立覆盖层，停用时要主动关闭
+                // 宝箱界面 / 扫描面板是独立覆盖层，停用时要主动关闭
                 TreasureBoxUI.ForceClose();
+                TreasureScanUI.ForceClose();
+
+                HuoYanJinJingEffect.Unsubscribe();
+
+                // 带路绿线是独立的世界空间对象，停用时要清掉
+                TreasureRouteLine.Clear();
 
                 // 卸掉装备期间生效的属性加成
                 JiuLongLiHuoZhaoEffect.RemoveAll();

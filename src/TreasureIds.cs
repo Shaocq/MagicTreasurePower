@@ -24,7 +24,8 @@ namespace MagicTreasurePower
     /// 17353 | HunYuanJinDou      | 混元金斗   | 0        | hyjd.png  | 注册顺序 4，暂定数值
     /// 17354 | JinJiaoJian        | 金蛟剪     | 0        | jjj.png   | 注册顺序 5，暂定数值
     /// 17355 | JiuLongLiHuoZhao   | 九龙离火罩 | 0        | jllhz.png | 注册顺序 6，暂定数值
-    /// 17356 | （尚未分配）        | —          | —        | —         | 后续扩展
+    /// 17356 | HuoYanJinJing      | 火眼金睛   | 0        | hyjj.png  | 注册顺序 7，战局物资扫描
+    /// 17357 | （尚未分配）        | —          | —        | —         | 后续扩展
     /// ...   | ...                | ...        | ...      | ...       | ...
     /// 17399 | 区间末尾            | —          | —        | —         | 暂时保留
     /// </code>
@@ -54,6 +55,9 @@ namespace MagicTreasurePower
 
         /// <summary>九龙离火罩。</summary>
         internal const int JiuLongLiHuoZhao = 17355;
+
+        /// <summary>火眼金睛。</summary>
+        internal const int HuoYanJinJing = 17356;
 
         /// <summary>判断某个 TypeID 是否属于本 mod 的法宝 ID 段。</summary>
         internal static bool IsInRange(int typeId)

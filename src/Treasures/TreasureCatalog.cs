@@ -114,6 +114,20 @@ namespace MagicTreasurePower.Treasures
                 DisplayQuality = DisplayQuality.Q7,
                 Tags = new[] { "Luxury" },
             },
+            new TreasureDefinition
+            {
+                TypeId = TreasureIds.HuoYanJinJing,
+                ConstantName = nameof(TreasureIds.HuoYanJinJing),
+                DisplayName = "火眼金睛",
+                Description = "八卦炉中炼出的眼目，能看破虚妄、直抵本源。凡尘障眼之物，在它面前无处遁形。",
+                EffectText = "进入战局时自动扫描全场物资箱，列出其中价值最高的 1 件物品；上锁的物资箱仅在已用钥匙录入机解锁或随身携带对应钥匙时才会被扫描。",
+                ResourceName = "hyjj.png",
+                Weight = 0.2f,
+                Value = 999999,
+                Quality = 7,
+                DisplayQuality = DisplayQuality.Q7,
+                Tags = new[] { "Luxury" },
+            },
         };
     }
 }

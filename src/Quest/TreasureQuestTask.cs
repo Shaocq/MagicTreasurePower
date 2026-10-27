@@ -43,6 +43,9 @@ namespace MagicTreasurePower.Quests
 
         /// <summary>受到指定异常状态一次（测试用）。</summary>
         SpecificDebuffOnce = 9,
+
+        /// <summary>单局开启 N 个不同的物资箱并成功撤离。</summary>
+        LootBoxesOpenedEvac = 10,
     }
 
     /// <summary>
@@ -164,6 +167,12 @@ namespace MagicTreasurePower.Quests
         private bool _runNoSpareAmmo;
         private bool _runDied;
 
+        /// <summary>本局已开启的物资箱数量（同一个箱子反复开关只算一次）。</summary>
+        private int _runLootBoxes;
+
+        /// <summary>本局已经算过的物资箱实例 ID。</summary>
+        private readonly HashSet<int> _runLootBoxIds = new HashSet<int>();
+
         private bool _hooked;
 
         /// <summary>最近一次主角受伤前的生命值，由 <see cref="TreasureHealthHurtProbe"/> 写入。</summary>
@@ -250,6 +259,9 @@ namespace MagicTreasurePower.Quests
                     case TreasureObjective.SpecificDebuffOnce:
                         progress = "受到一次骨折";
                         break;
+                    case TreasureObjective.LootBoxesOpenedEvac:
+                        progress = $"单局已开启物资箱 {_runLootBoxes}/{requireCount} 个，成功撤离后达成";
+                        break;
                     default:
                         progress = "未知目标";
                         break;
@@ -284,6 +296,7 @@ namespace MagicTreasurePower.Quests
                     LevelManager.OnLevelInitialized += OnLevelInitialized;
                     LevelManager.OnEvacuated += OnEvacuated;
                     TreasureQuestEvents.MainBuffAdded += OnMainBuffAdded;
+                    InteractableLootbox.OnStartLoot += OnLootBoxOpened;
                 }
                 else
                 {
@@ -292,6 +305,7 @@ namespace MagicTreasurePower.Quests
                     LevelManager.OnLevelInitialized -= OnLevelInitialized;
                     LevelManager.OnEvacuated -= OnEvacuated;
                     TreasureQuestEvents.MainBuffAdded -= OnMainBuffAdded;
+                    InteractableLootbox.OnStartLoot -= OnLootBoxOpened;
                 }
             }
             catch (Exception e)
@@ -403,6 +417,8 @@ namespace MagicTreasurePower.Quests
             _runDamage = 0f;
             _runNoSpareAmmo = false;
             _runDied = false;
+            _runLootBoxes = 0;
+            _runLootBoxIds.Clear();
         }
 
         private void CaptureSpareAmmo()
@@ -679,6 +695,40 @@ namespace MagicTreasurePower.Quests
             }
         }
 
+        /// <summary>
+        /// 物资箱计数：原版 <see cref="InteractableLootbox.OnStartLoot"/> 在战利品界面真正打开的瞬间触发。
+        /// 同一个箱子反复开关只算一次（按实例 ID 去重）。
+        /// </summary>
+        private void OnLootBoxOpened(InteractableLootbox box)
+        {
+            try
+            {
+                if (!IsLive || !InRaid)
+                    return;
+
+                if (objective != TreasureObjective.LootBoxesOpenedEvac)
+                    return;
+
+                EnsureRunStarted();
+                if (!_runActive)
+                    return;
+
+                if (box == null)
+                    return;
+
+                if (!_runLootBoxIds.Add(box.GetInstanceID()))
+                    return;
+
+                _runLootBoxes++;
+                Diag.Log($"法宝任务 {QuestId}：本局已开启物资箱 {_runLootBoxes}/{requireCount}");
+                ReportStatusChanged();
+            }
+            catch (Exception e)
+            {
+                Diag.Report("法宝任务：物资箱计数失败", e);
+            }
+        }
+
         private void OnEvacuated(EvacuationInfo info)
         {
             try
@@ -729,13 +779,18 @@ namespace MagicTreasurePower.Quests
                         if (SceneMatches(info.subsceneID))
                             _done = true;
                         break;
+
+                    case TreasureObjective.LootBoxesOpenedEvac:
+                        if (run && !_runDied && _runLootBoxes >= requireCount)
+                            _done = true;
+                        break;
                 }
 
                 Diag.Log(
                     $"法宝任务 {QuestId}：撤离结算 → {(_done ? "完成" : "未完成")}" +
                     $"（本局统计={run}，承伤={_runDamage:0}，击杀={_runKills}，" +
-                    $"低血={_runLowHpCount}，异常={_runDebuffHits}，物资={InventoryValue(main)}，" +
-                    $"场景={info.subsceneID}）");
+                    $"低血={_runLowHpCount}，异常={_runDebuffHits}，物资箱={_runLootBoxes}，" +
+                    $"物资={InventoryValue(main)}，场景={info.subsceneID}）");
 
                 _runActive = false;
 

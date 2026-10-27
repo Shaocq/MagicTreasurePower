@@ -66,6 +66,11 @@ namespace MagicTreasurePower.Treasures
         /// <summary>背包容量加成（格）。</summary>
         private static readonly int[] JiuLongSlots = { 8, 10, 12, 14, 16, 18, 20 };
 
+        // ---------------------------------------------------------------- 火眼金睛
+
+        /// <summary>每次进战局扫描后列出的物品件数：随等级 1 → 7 件，每级 +1。</summary>
+        private static readonly int[] HuoYanJinJingCount = { 1, 2, 3, 4, 5, 6, 7 };
+
         private const string GoldColor = "#E8BF5C";
 
         private static FieldInfo _effectDescriptionField;
@@ -95,6 +100,7 @@ namespace MagicTreasurePower.Treasures
         internal static float JiuLongArmorOf(int level) => JiuLongArmor[Index(level)];
         internal static float JiuLongResistOf(int level) => JiuLongResist[Index(level)] / 100f;
         internal static float JiuLongSlotsOf(int level) => JiuLongSlots[Index(level)];
+        internal static int HuoYanJinJingCountOf(int level) => HuoYanJinJingCount[Index(level)];
 
         // ---------------------------------------------------------------- 文案
 
@@ -139,6 +145,11 @@ namespace MagicTreasurePower.Treasures
                     return "装备时：身体与头部护甲 " + Gold("+" + JiuLongArmor[Index(level)]) +
                            "，火、毒、电、空间、幽灵、冰六种元素抗性各 " + Gold("+" + JiuLongResist[Index(level)] + "%") +
                            "，背包容量 " + Gold("+" + JiuLongSlots[Index(level)] + " 格") + "。";
+
+                case TreasureIds.HuoYanJinJing:
+                    return "进入战局时自动扫描全场物资箱，列出其中价值最高的 " +
+                           Gold(HuoYanJinJingCount[Index(level)] + " 件") +
+                           "物品；上锁的物资箱仅在已用钥匙录入机解锁或随身携带对应钥匙时才会被扫描。";
             }
 
             return null;

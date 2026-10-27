@@ -25,7 +25,7 @@ namespace MagicTreasurePower.Quests
     internal static class TreasureQuestRegistrar
     {
         private const int FirstQuestId = 900001;
-        private const int QuestCount = 7;
+        private const int QuestCount = 8;
 
         /// <summary>「坚忍之守」单局承受伤害阈值（原版要求）。</summary>
         private const float DamageTakenThreshold = 400f;
@@ -324,6 +324,10 @@ namespace MagicTreasurePower.Quests
                     // 按前缀匹配：零号区的子场景有 Main / 1 / Cave，实测撤离时拿到的是 _1
                     return new[] { Spec(TreasureObjective.EvacuateSceneOnce, 1, 0f, "Level_GroundZero") };
 
+                case 7:
+                    // 火眼金睛：单局开启 5 个不同的物资箱并成功撤离
+                    return new[] { Spec(TreasureObjective.LootBoxesOpenedEvac, 5) };
+
                 default:
                     return new QuestTaskSpec[0];
             }
@@ -362,6 +366,8 @@ namespace MagicTreasurePower.Quests
                     return $"单局撤离带出的背包物资总价值达到 {FormatAmount(spec.Threshold)}，并成功撤离。";
                 case TreasureObjective.EvacuateSceneOnce:
                     return "成功从零号区撤离一次。";
+                case TreasureObjective.LootBoxesOpenedEvac:
+                    return $"单局开启 {spec.Count} 个不同的物资箱，并成功撤离。";
                 case TreasureObjective.BossKillsTotal:
                     return spec.DistinctBosses
                         ? $"击杀 {spec.Count} 种不同的 BOSS 生物（同一种 BOSS 只算一次）。"
@@ -440,6 +446,7 @@ namespace MagicTreasurePower.Quests
                 case 4: return "坚忍之守";
                 case 5: return "满载而归";
                 case 6: return "初来乍到";
+                case 7: return "明察秋毫";
                 default: return "法宝任务";
             }
         }

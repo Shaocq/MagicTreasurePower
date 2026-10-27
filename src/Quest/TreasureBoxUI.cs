@@ -56,9 +56,15 @@ namespace MagicTreasurePower.Quests
         private static readonly Color TextSub = new Color(0.62f, 0.63f, 0.67f, 1f);
 
         private const float PanelWidth = 980f;
-        private const float PanelHeight = 600f;
+
+        /// <summary>
+        /// 七件法宝时列表需要 7 行：7 × 70 + 6 × 4 = 514，
+        /// 面板 660 时列表可用高度 = 660 - 104 - 24 = 532，刚好放得下。
+        /// </summary>
+        private const float PanelHeight = 660f;
+
         private const float RowHeight = 70f;
-        private const float RowSpacing = 7f;
+        private const float RowSpacing = 4f;
 
         internal static bool IsOpen => _root != null;
 
