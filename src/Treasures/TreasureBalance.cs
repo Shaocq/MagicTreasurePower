@@ -69,9 +69,9 @@ namespace MagicTreasurePower.Treasures
         // ---------------------------------------------------------------- 火眼金睛
 
         /// <summary>
-        /// 每次进战局扫描后列出的物品件数：Lv.1~7 = 1 / 1 / 2 / 2 / 3 / 4 / 5 件。
+        /// 每次进战局扫描后列出的物品件数：Lv.1~7 = 1 / 2 / 3 / 4 / 5 / 6 / 7 件。
         /// </summary>
-        private static readonly int[] HuoYanJinJingCount = { 1, 1, 2, 2, 3, 4, 5 };
+        private static readonly int[] HuoYanJinJingCount = { 1, 2, 3, 4, 5, 6, 7 };
 
         private const string GoldColor = "#E8BF5C";
 
