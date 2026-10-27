@@ -452,6 +452,10 @@ namespace MagicTreasurePower.Treasures
             if (item.GetComponentInParent<Canvas>() != null)
                 return false;
 
+            // 玩家 / 宠物 / 其它角色身上拿着的东西（不在背包或槽位里的）
+            if (item.GetComponentInParent<CharacterMainControl>() != null)
+                return false;
+
             if (main != null && go.transform.IsChildOf(main.transform))
                 return false;
 
