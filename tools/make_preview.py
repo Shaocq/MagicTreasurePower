@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
-"""生成 mod 预览图：七件法宝 4×2 展示。
+"""生成 mod 预览图：从 TreasureCatalog 自动读取法宝，最多 4 列 × 3 行。
 
 用法（在工程文件夹「法宝之力」下）：
     python tools/make_preview.py
 
-输出：法宝之力/preview.png（512×512），图标取自 resources/ 下的 PNG。
+输出：法宝之力/preview.png（512×512）。法宝超过 12 件时只展示前 12 件，
+并在底部注明总数；新增法宝不需要改这个脚本。
 素材本身是 448×448 的透明底图，直接叠加到深色底上。
 """
 
+import re
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -22,20 +24,31 @@ WHITE_WARM = (246, 234, 206)
 SUB_COLOR = (150, 172, 208)
 FOOT_COLOR = (156, 172, 196)
 
-# 图标：名称、素材、在网格中的位置（按 ID 顺序）
-TREASURES = [
-    ("翻天印", "fty.png"),
-    ("阴阳镜", "yyj.png"),
-    ("定海珠", "dhz.png"),
-    ("混元金斗", "hyjd.png"),
-    ("金铰剪", "jjj.png"),
-    ("九龙离火罩", "jllhz.png"),
-    ("火眼金睛", "hyjj.png"),
-]
-
 ROOT = Path(__file__).resolve().parent.parent
 RES = ROOT / "resources"
 OUT = ROOT / "preview.png"
+CATALOG = ROOT / "src" / "Treasures" / "TreasureCatalog.cs"
+
+# 单张预览最多展示多少件（4 列 × 3 行）
+MAX_ICONS = 12
+
+
+def load_treasures():
+    """从 TreasureCatalog.cs 读 DisplayName / ResourceName，顺序即注册顺序。
+
+    这样以后加法宝只改代码，不用再维护预览脚本里的名单。
+    """
+    text = CATALOG.read_text(encoding="utf-8")
+    pairs = re.findall(
+        r'DisplayName\s*=\s*"([^"]+)"[\s\S]*?ResourceName\s*=\s*"([^"]+)"',
+        text,
+    )
+    if not pairs:
+        raise SystemExit(f"没能从 {CATALOG} 解析出法宝列表")
+    return pairs
+
+
+TREASURES = load_treasures()
 
 S = 2                      # 超采样倍数，先画 1024 再缩小，边缘更干净
 W = H = 512 * S
@@ -125,22 +138,34 @@ def main() -> None:
     draw.line([(W // 2 - half, line_y), (W // 2 + half, line_y)], fill=GOLD + (140,), width=2)
     diamond(draw, W // 2, line_y, 7 * S, GOLD + (220,))
 
-    # 4×2 网格（七件法宝，最后一格留空）
+    # 网格：最多 4 列、3 行；行数由法宝数量决定
     margin = 48
     gap = 20
-    cols, rows = 4, 2
-    cell_w = (W - margin * 2 - gap * (cols - 1)) // cols
-    cell_h = 268
-    grid_top = 222
-    icon_size = 180
-    name_font = font(18 * S)
+    total = len(TREASURES)
+    shown = TREASURES[:MAX_ICONS]
+    cols = 4 if total > 4 else max(1, total)
+    rows = (len(shown) + cols - 1) // cols
 
-    for index, (name, resource) in enumerate(TREASURES):
+    cell_w = (W - margin * 2 - gap * (cols - 1)) // cols
+    grid_top = 222
+    grid_bottom = H - 96
+
+    # 行数越多，格子 / 图标 / 字号越小，保证全部落在标题与底部参数行之间
+    if rows <= 1:
+        cell_h, icon_size, name_pt = 300, 200, 20
+    elif rows == 2:
+        cell_h, icon_size, name_pt = 268, 180, 18
+    else:
+        cell_h, icon_size, name_pt = (grid_bottom - grid_top - gap * (rows - 1)) // rows, 150, 16
+
+    name_font = font(name_pt * S)
+
+    for index, (name, resource) in enumerate(shown):
         row, col = divmod(index, cols)
 
         # 最后一行不满时居中，避免右下角空出一格
         row_start = row * cols
-        row_count = min(cols, len(TREASURES) - row_start)
+        row_count = min(cols, len(shown) - row_start)
         offset = (cols - row_count) * (cell_w + gap) / 2
 
         x = int(margin + offset + col * (cell_w + gap))
@@ -189,9 +214,12 @@ def main() -> None:
 
     # 底部参数行（与物品实际数值保持一致）
     foot_font = font(20 * S, bold=False)
+    foot = f"{total} 件法宝 · 品质 7 · 价值 999,999 · 重量 0.2"
+    if total > MAX_ICONS:
+        foot += f"（预览展示前 {MAX_ICONS} 件）"
     draw.text(
         (W // 2, H - 76),
-        "七件法宝 · 品质 7 · 价值 999,999 · 重量 0.2",
+        foot,
         font=foot_font,
         fill=FOOT_COLOR + (255,),
         anchor="ma",

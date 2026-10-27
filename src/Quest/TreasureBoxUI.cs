@@ -58,8 +58,8 @@ namespace MagicTreasurePower.Quests
         private const float PanelWidth = 980f;
 
         /// <summary>
-        /// 七件法宝时列表需要 7 行：7 × 70 + 6 × 4 = 514，
-        /// 面板 660 时列表可用高度 = 660 - 104 - 24 = 532，刚好放得下。
+        /// 面板高度。列表区可用高度 = 660 - 104 - 24 = 532，
+        /// 7 行（7 × 70 + 6 × 4 = 514）刚好一屏；再多的法宝由列表里的 ScrollRect 滚动查看。
         /// </summary>
         private const float PanelHeight = 660f;
 
@@ -234,18 +234,54 @@ namespace MagicTreasurePower.Quests
             ConfigurePressAnimation(close, closeRect);
         }
 
+        /// <summary>
+        /// 左侧法宝列表。外面套一层 ScrollRect：现在 7 件刚好一屏，
+        /// 以后加法宝（≤12 件）超出可视高度时可以直接滚轮 / 拖拽滚动，不用再改布局。
+        /// </summary>
         private static void BuildList(Transform panel, TMP_FontAsset font)
         {
-            GameObject list = new GameObject("List", typeof(RectTransform));
-            list.transform.SetParent(panel, false);
-            var listRect = (RectTransform)list.transform;
-            listRect.anchorMin = new Vector2(0f, 0f);
-            listRect.anchorMax = new Vector2(0.56f, 1f);
-            listRect.offsetMin = new Vector2(26f, 24f);
-            listRect.offsetMax = new Vector2(-6f, -104f);
+            GameObject scrollGo = new GameObject("Scroll", typeof(RectTransform), typeof(ScrollRect));
+            scrollGo.transform.SetParent(panel, false);
 
-            for (int i = 0; i < Entries.Count; i++)
-                BuildRow(list.transform, Entries[i], i, font);
+            var scrollRect = (RectTransform)scrollGo.transform;
+            scrollRect.anchorMin = new Vector2(0f, 0f);
+            scrollRect.anchorMax = new Vector2(0.56f, 1f);
+            scrollRect.offsetMin = new Vector2(26f, 24f);
+            scrollRect.offsetMax = new Vector2(-6f, -104f);
+
+            GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+            viewport.transform.SetParent(scrollGo.transform, false);
+            var viewportRect = (RectTransform)viewport.transform;
+            viewportRect.anchorMin = Vector2.zero;
+            viewportRect.anchorMax = Vector2.one;
+            viewportRect.offsetMin = Vector2.zero;
+            viewportRect.offsetMax = Vector2.zero;
+
+            GameObject content = new GameObject("Content", typeof(RectTransform));
+            content.transform.SetParent(viewport.transform, false);
+            var contentRect = (RectTransform)content.transform;
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = new Vector2(1f, 1f);
+            contentRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.offsetMin = Vector2.zero;
+            contentRect.offsetMax = Vector2.zero;
+
+            int count = Entries.Count;
+            float contentHeight = count > 0
+                ? count * RowHeight + (count - 1) * RowSpacing
+                : 0f;
+            contentRect.sizeDelta = new Vector2(0f, contentHeight);
+
+            ScrollRect scroll = scrollGo.GetComponent<ScrollRect>();
+            scroll.content = contentRect;
+            scroll.viewport = viewportRect;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 30f;
+
+            for (int i = 0; i < count; i++)
+                BuildRow(content.transform, Entries[i], i, font);
         }
 
         private static void BuildRow(Transform parent, TreasureDefinition definition, int index, TMP_FontAsset font)

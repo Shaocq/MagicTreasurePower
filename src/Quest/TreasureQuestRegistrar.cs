@@ -5,13 +5,14 @@ using Duckov;
 using Duckov.Quests;
 using Duckov.Utilities;
 using HarmonyLib;
+using MagicTreasurePower.Treasures;
 using SodaCraft.Localizations;
 using UnityEngine;
 
 namespace MagicTreasurePower.Quests
 {
     /// <summary>
-    /// 注册七个法宝任务（全部挂在 Jeff 名下、同时可接可做），
+    /// 注册法宝任务（全部挂在 Jeff 名下、同时可接可做）：每件法宝一个专属任务 + 1 个额外任务，
     /// 每个任务奖励 1 个「法宝宝箱」。
     ///
     /// 原版任务来自 <c>QuestCollection</c> 里的预制体，且 <c>Quest.MeetsPrerequisit</c>
@@ -25,6 +26,12 @@ namespace MagicTreasurePower.Quests
     internal static class TreasureQuestRegistrar
     {
         private const int FirstQuestId = 900001;
+
+        /// <summary>
+        /// 任务数量。约定：<b>每件法宝一个专属任务 + 1 个额外任务（初来乍到）</b>。
+        /// 新增法宝时：在 <see cref="GetTaskSpecs"/> 追加一项、在 <see cref="GetName"/> 追加名字，
+        /// 并把这里 +1。<see cref="RegisterAll"/> 会在数量对不上时打警告。
+        /// </summary>
         private const int QuestCount = 8;
 
         /// <summary>「坚忍之守」单局承受伤害阈值（原版要求）。</summary>
@@ -60,6 +67,15 @@ namespace MagicTreasurePower.Quests
 
             try
             {
+                // 每件法宝一个专属任务 + 1 个额外任务（初来乍到），数量对不上说明加法宝时漏了任务
+                int expected = TreasureCatalog.All.Length + 1;
+                if (QuestCount != expected)
+                {
+                    Diag.Warn(
+                        $"法宝任务数量 {QuestCount} 与「法宝数 {TreasureCatalog.All.Length} + 1」不一致：" +
+                        "新增法宝时请同步追加任务");
+                }
+
                 TreasureBoxItem.Register();
 
                 QuestCollection collection = GameplayDataSettings.QuestCollection;

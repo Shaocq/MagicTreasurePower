@@ -200,6 +200,22 @@ mod 目录下的 `config.ini`，首次运行自动生成；用记事本或 **BBM
   `ID | 常量名 | 游戏内名称 | 克隆用原版模板 | 备注`。
 - 区间用满前先与用户确认是否扩展，不要私自改号。
 
+## 新增法宝 checklist
+
+按顺序做完下面这些，法宝就会自动出现在售货机之外的所有入口（法宝页签、法宝宝箱、预览图、升级 / 经验系统）：
+
+1. `src/TreasureIds.cs`：加 ID 常量，并在「物品登记表」补一行。
+2. `resources/`：放图标 PNG（文件名 = 首字母缩写，如 `hyjj.png`），编译时按文件名嵌入。
+3. `src/Treasures/TreasureCatalog.cs`：加一条 `TreasureDefinition`（名称 / 描述 / 效果 / 素材 / 数值 / 标签）。
+4. `src/Treasures/TreasureBalance.cs`：加等级数值数组 + `FormatEffectText` 分支。
+5. 实现能力：简单常驻效果放 `src/Treasures/*Effect.cs`；需要改原版行为的放 `src/Patches/`。
+6. 任务：`TreasureQuestRegistrar` 的 `GetTaskSpecs` / `GetName` 追加一项，`QuestCount` +1
+   （约定「每件法宝一个任务 + 1 个额外任务」；数量不对会在日志里警告）。
+7. 文案：`info.ini` 的法宝一览 / 任务一览 / 预览图说明同步（预览图会自动读目录，不用改脚本）。
+8. 验证：`dotnet build` → 检查日志 `已注册法宝：ID xxxxx` → 进游戏看法宝页签与宝箱列表。
+
+> 法宝槽位固定 6 个：法宝总数超过 6 件时，玩家需要自己取舍携带哪几件，这是设计意图。
+
 ## 前置
 
 - HarmonyLib（工坊 `3589088839`）：必须启用，并排在「法宝之力」之前加载。
@@ -251,7 +267,7 @@ preview.png     （存在时）
 - [x] 扫描原版 Buff 全表并记录到 `docs/原版Buff清单.md`（115 个，含金蛟剪推荐白名单）。
 - [ ] 词条对应的实际效果：概率、数值、生效条件待法宝升级系统确定后接入。
 - [x] 名称与简介的本地化覆盖（`MagicTreasurePower_<ID>` / `_Desc`）。
-- [x] 获取方式：完成法宝任务 → 法宝宝箱七选一（2026-10-22 起**不再上架售货机**）。
+- [x] 获取方式：完成法宝任务 → 法宝宝箱七选一（2026-10-22 起**常规版本不再上架售货机**；0.1.9 测试期火眼金睛按 1 元在基地售货机出售，由 `ShopSellHuoYanJinJing` 控制）。
 - [ ] 确定每件法宝的专属能力（Harmony 补丁或游戏事件）。
 - [x] 品质 7（`quality` + `displayQuality = Q7`）、基础价值 999,999。
 - [x] 标签：自建「法宝」（`MagicTreasure`，金色、显示在标签栏）+ 原版 `Luxury`。
