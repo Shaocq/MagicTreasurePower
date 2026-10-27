@@ -672,10 +672,10 @@ namespace MagicTreasurePower.UI
                     // 走到箱子附近时标记会自动消失，这里同步取消高亮
                     RefreshSelectionHighlight();
 
-                    // 面板开着期间同步「已获取」标记（比如刚开过箱子再按热键打开）
+                    // 面板开着期间每 1 秒同步「已获取」标记（比如刚开过箱子再按热键打开）
                     if (Time.unscaledTime >= _nextLootedCheck)
                     {
-                        _nextLootedCheck = Time.unscaledTime + 0.5f;
+                        _nextLootedCheck = Time.unscaledTime + 1f;
                         RefreshLootedLabels();
                     }
 
