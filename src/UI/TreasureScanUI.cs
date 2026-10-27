@@ -5,6 +5,7 @@ using MagicTreasurePower.Treasures;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace MagicTreasurePower.UI
@@ -228,9 +229,13 @@ namespace MagicTreasurePower.UI
             for (int i = 0; i < groups.Count; i++)
                 total += groups[i].Entries.Count;
 
+            ModConfig config = ModConfig.Current;
+            string routeHint = config.ShowRouteLine ? "点箱子行带路 · " : string.Empty;
+            string closeHint = " · " + routeHint + config.ScanHotkeyText + " 重开 · Esc 关闭";
+
             string subtitle = total < want
-                ? $"本局共扫到 {total} 件可获取物品（法宝 Lv.{level}）· 点箱子行带路 · F8 重开 · Esc 关闭"
-                : $"本局价值最高的 {total} 件物品（法宝 Lv.{level}）· 点箱子行带路 · F8 重开 · Esc 关闭";
+                ? $"本局共扫到 {total} 件可获取物品（法宝 Lv.{level}）" + closeHint
+                : $"本局价值最高的 {total} 件物品（法宝 Lv.{level}）" + closeHint;
 
             TextMeshProUGUI sub = CreateText(panel, "Subtitle", subtitle,
                 15f, TextSub, font, new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -407,6 +412,13 @@ namespace MagicTreasurePower.UI
                 if (group == null || group.Box == null)
                     return;
 
+                // 配置里关掉「带路绿线」后，点箱子行不再画线，也不关面板
+                if (!ModConfig.Current.ShowRouteLine)
+                {
+                    WarnRouteDisabledOnce();
+                    return;
+                }
+
                 TreasureRouteLine.Toggle(group.Box);
 
                 // 选中了新的带路目标就关掉面板，好让玩家立刻看到脚下的绿线；
@@ -423,6 +435,17 @@ namespace MagicTreasurePower.UI
             {
                 Diag.Report("火眼金睛：选择带路目标失败", e);
             }
+        }
+
+        private static bool _routeDisabledWarned;
+
+        private static void WarnRouteDisabledOnce()
+        {
+            if (_routeDisabledWarned)
+                return;
+
+            _routeDisabledWarned = true;
+            Diag.Log("带路线已在 config.ini（ShowRouteLine=false）中关闭，点箱子行不会画线");
         }
 
         /// <summary>把「当前带路目标」的那一行标成金色底。</summary>
@@ -642,8 +665,17 @@ namespace MagicTreasurePower.UI
                     if (IsOpen)
                         return;
 
-                    UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
-                    if (keyboard != null && keyboard.f8Key.wasPressedThisFrame)
+                    // 死亡 / 撤离过程中不重开面板，避免挡住结算界面
+                    CharacterMainControl main = CharacterMainControl.Main;
+                    if (main == null || (main.Health != null && main.Health.IsDead))
+                        return;
+
+                    Key key = ModConfig.Current.ScanKey;
+                    if (key == Key.None)
+                        return;
+
+                    Keyboard keyboard = Keyboard.current;
+                    if (keyboard != null && keyboard[key] != null && keyboard[key].wasPressedThisFrame)
                         ReopenLast();
                 }
                 catch

@@ -251,6 +251,14 @@ namespace MagicTreasurePower.Treasures
                     if (inventory == null || inventory.IsEmpty())
                         continue;
 
+                    // 刚被建出来、物品还在异步生成的箱子先跳过，
+                    // 否则会把「生成到一半」的内容当成完整结果（下一次扫描自然不会有这个问题）
+                    if (inventory.Loading)
+                    {
+                        Diag.Log($"火眼金睛：物资箱「{BoxNameOf(box)}」仍在生成物品，本次跳过");
+                        continue;
+                    }
+
                     // 上锁且打不开的箱子直接跳过：展示了也拿不到
                     if (!CanOpen(main, box))
                     {

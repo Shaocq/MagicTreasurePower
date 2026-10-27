@@ -2,7 +2,7 @@
 
 [![游戏](https://img.shields.io/badge/游戏-Escape%20from%20Duckov-blue)](https://store.steampowered.com/app/3167020/)
 [![协议](https://img.shields.io/badge/协议-MIT-yellow)](LICENSE)
-[![版本](https://img.shields.io/badge/版本-0.1.8-brightgreen)](CHANGELOG.md)
+[![版本](https://img.shields.io/badge/版本-0.1.9-brightgreen)](CHANGELOG.md)
 
 > 为逃离鸭科夫新增「法宝」类物品：七件封神法宝、专属槽位、等级成长与八条法宝任务链。
 
@@ -12,12 +12,22 @@
 | 框架 | `Duckov.Modding.ModBehaviour` |
 | 前置 | HarmonyLib（工坊 `3589088839`），必须置于本 mod **之前**加载 |
 | 创意工坊 | 3823237404 |
-| 当前版本 | 0.1.8 |
+| 当前版本 | 0.1.9 |
 | 开源协议 | [MIT](LICENSE) |
 
 ## 安装
 
 订阅前置 HarmonyLib（工坊 `3589088839`）并置于本 mod **之前**加载，然后在创意工坊订阅「法宝之力」，或把 `MagicTreasurePower` 文件夹放入 `Duckov_Data\Mods\`。
+
+## 配置（config.ini）
+
+mod 目录下的 `config.ini`，首次运行自动生成；用记事本或 **BBMM（更好的更好的mod管理器）的 mod 条目菜单**即可编辑，改完在模组管理器里禁用再启用本 mod 生效。
+
+| 键 | 默认值 | 说明 |
+| --- | --- | --- |
+| `ScanHotkey` | `F8` | 重开扫描面板的快捷键（Unity Input System 按键名，如 `F8` / `F7` / `H` / `PageUp`） |
+| `ShowRouteLine` | `true` | 是否允许点箱子行画「带路绿线」；`false` 则只保留列表，不画线 |
+| `ShopSellHuoYanJinJing` | `true` | **【测试用】** 是否把火眼金睛按 1 元上架基地售货机；正式发布前必须改 `false` |
 
 > **`lib/0Harmony.dll` 不在仓库内。** 需要从源码编译时，请把创意工坊前置 HarmonyLib 目录下的 `0Harmony.dll` 复制到 `lib/` 下。
 

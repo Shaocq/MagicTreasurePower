@@ -3,7 +3,7 @@ using ItemStatsSystem;
 namespace MagicTreasurePower.Treasures
 {
     /// <summary>
-    /// 首批六件法宝。
+    /// 七件法宝（首批六件 + 火眼金睛）。
     ///
     /// 素材文件名与法宝的对应关系（用户指定）：
     ///   fty  = 翻天印        yyj  = 阴阳镜

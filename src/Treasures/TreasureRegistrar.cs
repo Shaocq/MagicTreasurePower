@@ -718,7 +718,7 @@ namespace MagicTreasurePower.Treasures
                 LocalizationManager.SetOverrideText("Tag_" + BoxTagName, "法宝宝箱");
                 LocalizationManager.SetOverrideText(
                     "Tag_" + BoxTagName + "_Desc",
-                    "装着法宝的箱子，打开后可从六件法宝中任选其一。");
+                    "装着法宝的箱子，打开后可从七件法宝中任选其一。");
                 return _boxTag;
             }
             catch (Exception e)

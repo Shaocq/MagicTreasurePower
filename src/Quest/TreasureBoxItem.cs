@@ -10,14 +10,14 @@ using UnityEngine;
 namespace MagicTreasurePower.Quests
 {
     /// <summary>
-    /// 「法宝宝箱」物品：任务奖励，使用后打开六选一界面。
+    /// 「法宝宝箱」物品：任务奖励，使用后打开七选一界面。
     ///
     /// 物品用动态注册（与法宝同一套流程），克隆一件法宝作为模板，
     /// 清掉法宝自带的 Effect / 标签，再挂上自定义使用行为。
     /// </summary>
     internal static class TreasureBoxItem
     {
-        /// <summary>宝箱物品 ID（在法宝预留段 17350~17399 内，不与六件法宝冲突）。</summary>
+        /// <summary>宝箱物品 ID（在法宝预留段 17350~17399 内，不与七件法宝冲突）。</summary>
         internal const int TypeId = 17356;
 
         /// <summary>宝箱原型的 GameObject 名称前缀（Instantiate 后可能带 (Clone)）。</summary>
@@ -105,7 +105,7 @@ namespace MagicTreasurePower.Quests
                 if (item.Effects != null)
                     item.Effects.Clear();
 
-                // 使用行为：打开六选一界面
+                // 使用行为：打开七选一界面
                 item.AddUsageUtilitiesComponent();
                 UsageUtilities usage = item.UsageUtilities;
                 if (usage != null)
@@ -117,7 +117,7 @@ namespace MagicTreasurePower.Quests
                 UnityEngine.Object.DontDestroyOnLoad(clone);
 
                 LocalizationManager.SetOverrideText(NameKey, "法宝宝箱");
-                LocalizationManager.SetOverrideText(DescKey, "使用后可从六件法宝中任选一件。");
+                LocalizationManager.SetOverrideText(DescKey, "使用后可从七件法宝中任选一件。");
 
                 if (ItemAssetsCollection.AddDynamicEntry(item))
                 {
@@ -250,7 +250,7 @@ namespace MagicTreasurePower.Quests
         }
     }
 
-    /// <summary>宝箱的使用行为：打开六选一界面。</summary>
+    /// <summary>宝箱的使用行为：打开七选一界面。</summary>
     public class TreasureBoxUsageBehavior : UsageBehavior
     {
         public override DisplaySettingsData DisplaySettings => new DisplaySettingsData

@@ -33,6 +33,10 @@ namespace MagicTreasurePower.Treasures
             if (box == null)
                 return;
 
+            // config.ini 的 ShowRouteLine=false 时完全不画线
+            if (!ModConfig.Current.ShowRouteLine)
+                return;
+
             int id = box.GetInstanceID();
             if (_host != null && _host.TargetBoxId == id)
             {
@@ -177,7 +181,7 @@ namespace MagicTreasurePower.Treasures
             _nextRepath = 0f;
 
             if (_box != null)
-                RequestPath(true);
+                RequestPath();
         }
 
         internal void ClearTarget()
@@ -197,8 +201,14 @@ namespace MagicTreasurePower.Treasures
         {
             try
             {
+                // 箱子被销毁（换图 / 清场）时也要把线收掉：
+                // 否则 _box 变成 Unity 假 null 后会一直停在旧世界坐标上
                 if (_box == null)
+                {
+                    if (TargetBoxId != 0)
+                        ClearTarget();
                     return;
+                }
 
                 CharacterMainControl main = CharacterMainControl.Main;
                 LevelManager manager = LevelManager.Instance;
@@ -229,7 +239,7 @@ namespace MagicTreasurePower.Treasures
                 if ((start - _lastPathStart).sqrMagnitude < RepathMoveDistance * RepathMoveDistance)
                     return;
 
-                RequestPath(false);
+                RequestPath();
             }
             catch (Exception e)
             {
@@ -238,7 +248,7 @@ namespace MagicTreasurePower.Treasures
             }
         }
 
-        private void RequestPath(bool force)
+        private void RequestPath()
         {
             if (_box == null)
                 return;

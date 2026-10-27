@@ -67,7 +67,14 @@ namespace MagicTreasurePower
                 Diag.Log($"已加载：版本 {info.version}，目录 {info.path}");
                 Diag.Log(TreasureIds.Describe());
 
+                // 用户配置（config.ini，可在 BBMM 的 mod 条目菜单里编辑）
+                ModConfig.Load(info.path);
+
                 TreasureRegistrar.RegisterAll();
+
+                // 【测试用】按 1 元把火眼金睛上架到基地售货机（config.ini 可关）
+                if (ModConfig.Current.ShopSellHuoYanJinJing)
+                    TreasureShopStock.Install();
 
                 // ID 冲突时不注册对应法宝；进游戏后用原版提示条显示 3 秒
                 ConflictNotifier.Schedule(this);
@@ -116,6 +123,8 @@ namespace MagicTreasurePower
 
                 // 带路绿线是独立的世界空间对象，停用时要清掉
                 TreasureRouteLine.Clear();
+
+                TreasureShopStock.Uninstall();
 
                 // 卸掉装备期间生效的属性加成
                 JiuLongLiHuoZhaoEffect.RemoveAll();

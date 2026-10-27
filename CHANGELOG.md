@@ -2,6 +2,25 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式。
 
+## [0.1.9] - 2026-10-28
+
+### 新增
+
+- **配置文件 `config.ini`**（mod 目录下，首次运行自动生成；BBMM 的 mod 条目菜单可直接编辑）
+  - `ScanHotkey`：扫描面板重开热键，默认 `F8`，可改成任意 Unity Input System 按键名。
+  - `ShowRouteLine`：带路绿线开关，`false` 时点箱子行不再画线。
+  - `ShopSellHuoYanJinJing`：**【测试用】** 是否把火眼金睛按 1 元上架基地售货机，默认 `true`。
+- **【测试用】火眼金睛按 1 元上架基地售货机**（`src/Treasures/TreasureShopStock.cs`）
+  - 商人 `Merchant_Normal`（基地售货机），价格系数按物品 raw value 反推，
+    买入 / 回购都固定 1 元，库存 99；正式发布前请把 `ShopSellHuoYanJinJing` 改为 `false`。
+- 补全残留文案：法宝宝箱说明从「六件法宝任选」改为「七件法宝任选」。
+
+### 修正
+
+- 带路线：目标箱子被销毁（换图 / 清场）时没有收线，可能在旧世界坐标留下一条静态绿线。
+- 扫描：仍在异步生成物品的箱子会整箱跳过，避免把「生成到一半」的内容当成完整结果。
+- F8 重开面板时若角色已死亡则不再弹出，避免挡住结算界面。
+
 ## [0.1.8] - 2026-10-28
 
 ### 新增

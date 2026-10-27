@@ -13,7 +13,7 @@ using UnityEngine.UI;
 namespace MagicTreasurePower.Quests
 {
     /// <summary>
-    /// 法宝宝箱的六选一界面。
+    /// 法宝宝箱的七选一界面。
     ///
     /// <para><b>布局：</b>仿主界面 MOD 列表——左侧竖排列表（图标 + 名称 + 效果摘要），
     /// 右侧详情面板（大图标 + 效果 + 背景故事 + 「选择」按钮）。</para>
