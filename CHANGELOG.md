@@ -2,6 +2,24 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式。
 
+## [0.1.10] - 2026-10-28
+
+### 调整
+
+- **带路绿线改为贴地直线**：去掉 A* 寻路（绕路看起来杂乱），改为从角色脚下到箱子直连，
+  沿地面采样贴地、不做避障；同时移除 csproj 里的 `AstarPathfindingProject` / `PackageTools` / `Drawing` 编译期引用。
+- **火眼金睛扫描件数固定 5 件**：暂时不随等级变化（用户测试期要求），
+  `TreasureBalance.HuoYanJinJingCount` 改回 {5,5,5,5,5,5,5}，以后要恢复等级成长只改这一个数组。
+- **「明察秋毫」任务要求从 5 个物资箱提高到 10 个**（用户 2026-10-28 要求）。
+
+### 新增
+
+- **ModSetting 支持**（工坊 `3595729494`）：游戏设置页的「模组设置」里出现本 mod 的三项设置——
+  重开热键（按键绑定）、带路绿线开关、售货机测试上架开关，改完立即生效并写回 `config.ini`。
+  采用**松耦合**方案：原样引入 ModSetting 官方 `ModSettingAPI.cs`，只通过反射调用
+  `ModSetting.ModBehaviour`，不引用 `ModSetting.dll`；未装 ModSetting 时本 mod 照常运行，只是没有设置页。
+  启动时会先读取 ModSetting 存档值覆盖 `config.ini` 默认值，两边保持一致。
+
 ## [0.1.9] - 2026-10-28
 
 ### 新增

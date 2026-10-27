@@ -1,5 +1,5 @@
 using System;
-using System.Globalization;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using UnityEngine.InputSystem;
@@ -38,6 +38,9 @@ namespace MagicTreasurePower
 
         private static ModConfig _current;
 
+        /// <summary>当前 config.ini 的完整路径；用于把 ModSetting 里改的值写回文件。</summary>
+        private static string _path;
+
         internal static ModConfig Current
         {
             get
@@ -65,6 +68,8 @@ namespace MagicTreasurePower
                     _current = config;
                     return;
                 }
+
+                _path = path;
 
                 if (!File.Exists(path))
                 {
@@ -147,6 +152,52 @@ namespace MagicTreasurePower
                 return false;
 
             return fallback;
+        }
+
+        /// <summary>
+        /// 把当前值写回 config.ini（只改这三行，保留用户自己加的注释与其它键）。
+        /// 供 ModSetting 设置页改完值后调用，保证 config.ini 与游戏内设置一致。
+        /// </summary>
+        internal static void Persist()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(_path))
+                    return;
+
+                ModConfig config = Current;
+                var lines = File.Exists(_path)
+                    ? new List<string>(File.ReadAllLines(_path))
+                    : new List<string>();
+
+                SetLine(lines, "ScanHotkey", config.ScanHotkeyText);
+                SetLine(lines, "ShowRouteLine", config.ShowRouteLine ? "true" : "false");
+                SetLine(lines, "ShopSellHuoYanJinJing", config.ShopSellHuoYanJinJing ? "true" : "false");
+
+                File.WriteAllLines(_path, lines, new UTF8Encoding(true));
+            }
+            catch (Exception e)
+            {
+                Diag.Warn($"写回 config.ini 失败：{e.Message}");
+            }
+        }
+
+        /// <summary>把 key=value 写进对应的行；没有这一行就追加到末尾。</summary>
+        private static void SetLine(List<string> lines, string key, string value)
+        {
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string line = lines[i].TrimStart();
+                if (line.Length > key.Length &&
+                    line.StartsWith(key, StringComparison.OrdinalIgnoreCase) &&
+                    line[key.Length] == '=')
+                {
+                    lines[i] = key + "=" + value;
+                    return;
+                }
+            }
+
+            lines.Add(key + "=" + value);
         }
 
         /// <summary>生成默认配置文件。写 UTF-8 BOM，Windows 记事本 / BBMM 编辑器打开都不会乱码。</summary>

@@ -83,6 +83,55 @@ namespace MagicTreasurePower.Treasures
             }
         }
 
+        /// <summary>
+        /// ModSetting 里切换「测试上架」开关时调用：
+        /// 打开 → 重新上架；关闭 → 退订事件并把条目从数据库与现有售货机里撤掉。
+        /// </summary>
+        internal static void SetEnabled(bool enabled)
+        {
+            try
+            {
+                if (enabled)
+                {
+                    Install();
+                    SafeApply();
+                    return;
+                }
+
+                Uninstall();
+                RemoveFromDatabaseAndShops();
+            }
+            catch (Exception e)
+            {
+                Diag.Report("切换售货机测试上架失败", e);
+            }
+        }
+
+        private static void RemoveFromDatabaseAndShops()
+        {
+            int typeId = TreasureIds.HuoYanJinJing;
+
+            StockShopDatabase database = GetDatabase();
+            if (database != null && database.merchantProfiles != null)
+            {
+                StockShopDatabase.MerchantProfile profile =
+                    database.merchantProfiles.Find(p => p != null && p.merchantID == MerchantId);
+
+                profile?.entries?.RemoveAll(e => e != null && e.typeID == typeId);
+            }
+
+            foreach (StockShop shop in Object.FindObjectsOfType<StockShop>())
+            {
+                if (shop == null || shop.MerchantID != MerchantId)
+                    continue;
+
+                shop.entries?.RemoveAll(e => e != null && e.ItemTypeID == typeId);
+                shop.overrideSellingPrice?.RemoveAll(e => e != null && e.typeID == typeId);
+            }
+
+            Diag.Log("已从基地售货机撤下火眼金睛");
+        }
+
         private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             // sceneLoaded 早于场景对象的 Start：先写商店数据库，

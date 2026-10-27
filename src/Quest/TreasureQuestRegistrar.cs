@@ -341,8 +341,8 @@ namespace MagicTreasurePower.Quests
                     return new[] { Spec(TreasureObjective.EvacuateSceneOnce, 1, 0f, "Level_GroundZero") };
 
                 case 7:
-                    // 火眼金睛：单局开启 5 个不同的物资箱并成功撤离
-                    return new[] { Spec(TreasureObjective.LootBoxesOpenedEvac, 5) };
+                    // 火眼金睛：单局开启 10 个不同的物资箱并成功撤离
+                    return new[] { Spec(TreasureObjective.LootBoxesOpenedEvac, 10) };
 
                 default:
                     return new QuestTaskSpec[0];

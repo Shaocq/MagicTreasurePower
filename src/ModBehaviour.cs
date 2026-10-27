@@ -3,6 +3,7 @@ using System.Collections;
 using System.Reflection;
 using HarmonyLib;
 using MagicTreasurePower.Conflicts;
+using MagicTreasurePower.ModSettingIntegration;
 using MagicTreasurePower.Patches;
 using MagicTreasurePower.Quests;
 using MagicTreasurePower.Treasures;
@@ -33,6 +34,7 @@ namespace MagicTreasurePower
 
         private Harmony _harmony;
         private Coroutine _patchCoroutine;
+        private Coroutine _modSettingsCoroutine;
 
         /// <summary>关卡初始化监听是否已经订阅（避免 mod 重载时重复挂）。</summary>
         private static bool _levelHookInstalled;
@@ -75,6 +77,9 @@ namespace MagicTreasurePower
                 // 【测试用】按 1 元把火眼金睛上架到基地售货机（config.ini 可关）
                 if (ModConfig.Current.ShopSellHuoYanJinJing)
                     TreasureShopStock.Install();
+
+                // ModSetting 可能比本 mod 晚加载：定时重试注册设置页
+                _modSettingsCoroutine = StartCoroutine(RegisterModSettingsWhenReady());
 
                 // ID 冲突时不注册对应法宝；进游戏后用原版提示条显示 3 秒
                 ConflictNotifier.Schedule(this);
@@ -125,6 +130,13 @@ namespace MagicTreasurePower
                 TreasureRouteLine.Clear();
 
                 TreasureShopStock.Uninstall();
+                TreasureModSettings.Reset();
+
+                if (_modSettingsCoroutine != null)
+                {
+                    StopCoroutine(_modSettingsCoroutine);
+                    _modSettingsCoroutine = null;
+                }
 
                 // 卸掉装备期间生效的属性加成
                 JiuLongLiHuoZhaoEffect.RemoveAll();
@@ -148,12 +160,37 @@ namespace MagicTreasurePower
                 }
 
                 _patchAttempted = false;
+                _instance = null;
                 Diag.Log("已停用，补丁已清理");
             }
             catch (Exception e)
             {
                 Diag.Report("停用清理失败", e);
             }
+        }
+
+        /// <summary>
+        /// 等待 ModSetting 加载：它可能排在本 mod 后面，未加载时 ModSettingAPI.Init 找不到类型。
+        /// 重试 15 次（约 30 秒）仍找不到就放弃；config.ini 始终可用。
+        /// </summary>
+        private IEnumerator RegisterModSettingsWhenReady()
+        {
+            for (int attempt = 0; attempt < 15; attempt++)
+            {
+                try
+                {
+                    if (TreasureModSettings.TryRegister(info))
+                        yield break;
+                }
+                catch (Exception e)
+                {
+                    Diag.Report("注册 ModSetting 设置页失败", e);
+                }
+
+                yield return new WaitForSecondsRealtime(2f);
+            }
+
+            Diag.Warn("未检测到 ModSetting（工坊 3595729494），设置页不会出现本 mod 的条目；config.ini 仍然有效");
         }
 
         /// <summary>

@@ -1,24 +1,18 @@
 using System;
-using System.Collections.Generic;
 using Duckov.Utilities;
-using Pathfinding;
 using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace MagicTreasurePower.Treasures
 {
     /// <summary>
-    /// 火眼金睛的「带路绿线」：从角色脚下沿可行走地面画一条绿线，连到选中的物资箱。
+    /// 火眼金睛的「带路绿线」：从角色脚下到选中的物资箱画一条**贴地直线**。
     ///
-    /// <para><b>寻路：</b>直接用游戏自带的 A*（<c>AstarPathfindingProject</c> 的
-    /// <see cref="Seeker"/>），与 AI 用的是同一套图，所以线会绕开墙体和建筑。
-    /// 寻路失败（缺寻路图 / 箱子不在网格上）时退化成「贴地直线」，至少保证有指引。</para>
+    /// <para><b>为什么不用 A*：</b>游戏自带的 A* 路径会绕路，线看起来杂乱；
+    /// 这里只做直连指引，简单直观。线沿地面采样（向下打射线贴地），不做避障。</para>
     ///
     /// <para><b>生命周期：</b>同一时刻只保留一条线；再点同一个箱子会取消；
     /// 角色走到箱子 3 米内自动消失；换图 / 回基地 / 停用 mod 也会清掉。</para>
-    ///
-    /// <para><b>刷新：</b>角色移动超过 4 米时每 1.5 秒按当前位置重算一次，
-    /// 保证线的起点始终跟着角色。</para>
     /// </summary>
     internal static class TreasureRouteLine
     {
@@ -51,7 +45,7 @@ namespace MagicTreasurePower.Treasures
         {
             try
             {
-                if (box == null)
+                if (box == null || !ModConfig.Current.ShowRouteLine)
                     return;
 
                 EnsureHost().SetTarget(box);
@@ -84,20 +78,20 @@ namespace MagicTreasurePower.Treasures
         }
     }
 
-    /// <summary>绿色带路线的宿主：管 LineRenderer、A* 请求与自动清除。</summary>
+    /// <summary>绿色带路线的宿主：管 LineRenderer、贴地采样与自动清除。</summary>
     internal sealed class RouteLineHost : MonoBehaviour
     {
         /// <summary>走到这个距离内就认为「到了」，线自动消失（米）。</summary>
         private const float ArriveDistance = 3f;
 
-        /// <summary>角色移动超过这个距离才重算路径（米）。</summary>
-        private const float RepathMoveDistance = 4f;
+        /// <summary>角色移动超过这个距离才重新采样（米）。</summary>
+        private const float RefreshMoveDistance = 1f;
 
-        /// <summary>重算路径的最小间隔（秒）。</summary>
-        private const float RepathInterval = 1.5f;
+        /// <summary>重新采样的最小间隔（秒）。</summary>
+        private const float RefreshInterval = 0.25f;
 
-        /// <summary>贴地直线采样点数。</summary>
-        private const int StraightSamples = 48;
+        /// <summary>直线采样点数（越大越贴合起伏地形）。</summary>
+        private const int Samples = 32;
 
         /// <summary>线离地高度（米），防止被地面遮住。</summary>
         private const float GroundOffset = 0.08f;
@@ -107,9 +101,8 @@ namespace MagicTreasurePower.Treasures
         private InteractableLootbox _box;
         private LevelManager _level;
         private LineRenderer _line;
-        private Seeker _seeker;
-        private Vector3 _lastPathStart;
-        private float _nextRepath;
+        private Vector3 _lastStart;
+        private float _nextRefresh;
 
         internal int TargetBoxId { get; private set; }
 
@@ -136,7 +129,7 @@ namespace MagicTreasurePower.Treasures
             _line.startWidth = 0.14f;
             _line.endWidth = 0.14f;
             _line.numCapVertices = 4;
-            _line.numCornerVertices = 4;
+            _line.numCornerVertices = 2;
             _line.textureMode = LineTextureMode.Stretch;
             _line.alignment = LineAlignment.View;
             _line.shadowCastingMode = ShadowCastingMode.Off;
@@ -177,11 +170,11 @@ namespace MagicTreasurePower.Treasures
             _box = box;
             TargetBoxId = box != null ? box.GetInstanceID() : 0;
             _level = LevelManager.Instance;
-            _lastPathStart = Vector3.zero;
-            _nextRepath = 0f;
+            _lastStart = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            _nextRefresh = 0f;
 
             if (_box != null)
-                RequestPath();
+                Refresh(true);
         }
 
         internal void ClearTarget()
@@ -230,16 +223,16 @@ namespace MagicTreasurePower.Treasures
                     return;
                 }
 
-                if (Time.unscaledTime < _nextRepath)
+                if (Time.unscaledTime < _nextRefresh)
                     return;
 
-                _nextRepath = Time.unscaledTime + RepathInterval;
+                _nextRefresh = Time.unscaledTime + RefreshInterval;
 
-                // 角色没怎么动就不重算，省掉不必要的寻路开销
-                if ((start - _lastPathStart).sqrMagnitude < RepathMoveDistance * RepathMoveDistance)
+                // 角色没怎么动就不重采样，省掉射线开销
+                if ((start - _lastStart).sqrMagnitude < RefreshMoveDistance * RefreshMoveDistance)
                     return;
 
-                RequestPath();
+                Refresh(false);
             }
             catch (Exception e)
             {
@@ -248,9 +241,9 @@ namespace MagicTreasurePower.Treasures
             }
         }
 
-        private void RequestPath()
+        private void Refresh(bool force)
         {
-            if (_box == null)
+            if (_box == null || _line == null)
                 return;
 
             CharacterMainControl main = CharacterMainControl.Main;
@@ -259,95 +252,17 @@ namespace MagicTreasurePower.Treasures
 
             Vector3 start = main.transform.position;
             Vector3 end = _box.transform.position;
-            _lastPathStart = start;
 
-            EnsureSeeker();
-
-            if (_seeker == null)
-            {
-                // 没有可用寻路图（或 A* 还没初始化）：退化成贴地直线
-                DrawStraightLine(start, end);
-                return;
-            }
-
-            try
-            {
-                _seeker.CancelCurrentPathRequest();
-                _seeker.StartPath(start, end, OnPathComplete);
-            }
-            catch (Exception e)
-            {
-                Diag.Warn($"火眼金睛：A* 寻路失败，改用贴地直线（{e.GetType().Name}）");
-                DrawStraightLine(start, end);
-            }
-        }
-
-        private void EnsureSeeker()
-        {
-            if (_seeker != null)
+            if (!force && (start - _lastStart).sqrMagnitude < RefreshMoveDistance * RefreshMoveDistance)
                 return;
 
-            try
-            {
-                if (AstarPath.active == null)
-                    return;
-
-                _seeker = gameObject.GetComponent<Seeker>();
-                if (_seeker == null)
-                    _seeker = gameObject.AddComponent<Seeker>();
-            }
-            catch (Exception e)
-            {
-                Diag.Warn($"火眼金睛：创建寻路组件失败（{e.GetType().Name}）");
-                _seeker = null;
-            }
-        }
-
-        private void OnPathComplete(Path p)
-        {
-            try
-            {
-                if (_box == null || _line == null)
-                    return;
-
-                if (p != null && !p.error && p.vectorPath != null && p.vectorPath.Count >= 2)
-                {
-                    DrawPath(p.vectorPath);
-                    return;
-                }
-
-                // 寻路失败（目标不可达等）：贴地直线兜底
-                Vector3 start = _lastPathStart;
-                Vector3 end = _box.transform.position;
-                DrawStraightLine(start, end);
-            }
-            catch (Exception e)
-            {
-                Diag.Report("火眼金睛：处理寻路结果失败", e);
-            }
-        }
-
-        private void DrawPath(List<Vector3> points)
-        {
-            if (_line == null || points == null || points.Count < 2)
-                return;
-
-            var array = new Vector3[points.Count];
-            for (int i = 0; i < points.Count; i++)
-            {
-                Vector3 point = points[i];
-                point.y += GroundOffset;
-                array[i] = point;
-            }
-
-            _line.positionCount = array.Length;
-            _line.SetPositions(array);
-            _line.enabled = true;
+            _lastStart = start;
+            DrawStraightLine(start, end);
         }
 
         /// <summary>
         /// 贴地直线：沿直线采样，每个采样点向下打射线找地面高度；
-        /// 找不到地面就用两端插值的高度。不做避障，只作为寻路失败时的兜底。
+        /// 找不到地面就用两端插值的高度。不做避障。
         /// </summary>
         private void DrawStraightLine(Vector3 start, Vector3 end)
         {
@@ -363,10 +278,10 @@ namespace MagicTreasurePower.Treasures
             {
             }
 
-            var array = new Vector3[StraightSamples];
-            for (int i = 0; i < StraightSamples; i++)
+            var points = new Vector3[Samples];
+            for (int i = 0; i < Samples; i++)
             {
-                float t = i / (float)(StraightSamples - 1);
+                float t = i / (float)(Samples - 1);
                 Vector3 point = Vector3.Lerp(start, end, t);
                 point.y += GroundOffset;
 
@@ -378,11 +293,11 @@ namespace MagicTreasurePower.Treasures
                         point.y = hit.point.y + GroundOffset;
                 }
 
-                array[i] = point;
+                points[i] = point;
             }
 
-            _line.positionCount = array.Length;
-            _line.SetPositions(array);
+            _line.positionCount = points.Length;
+            _line.SetPositions(points);
             _line.enabled = true;
         }
     }
