@@ -883,7 +883,10 @@ namespace MagicTreasurePower.Treasures
         {
             Box = box;
             Target = box != null ? box.transform : null;
-            TargetId = box != null ? box.GetInstanceID() : 0;
+
+            // 必须和透视标记用同一个 ID：标记那边拿的是 Transform.GetInstanceID()，
+            // 这里如果用 GameObject / Item 组件的 ID，两边永远对不上（选中反馈会失效）
+            TargetId = Target != null ? Target.GetInstanceID() : 0;
             BoxName = boxName;
             Distance = distance;
         }
@@ -892,7 +895,7 @@ namespace MagicTreasurePower.Treasures
         {
             GroundItem = groundItem;
             Target = groundItem != null ? groundItem.transform : null;
-            TargetId = groundItem != null ? groundItem.GetInstanceID() : 0;
+            TargetId = Target != null ? Target.GetInstanceID() : 0;
             BoxName = boxName;
             Distance = distance;
         }

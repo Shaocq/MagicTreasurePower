@@ -2,6 +2,15 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式。
 
+## [0.1.24] - 2026-10-28
+
+### 修复
+
+- **面板点击选中反馈失效（关键）**：`TreasureScanGroup.TargetId` 之前用箱子 GameObject /
+  地面物品 Item 组件的 `GetInstanceID()`，而透视标记用 `Transform.GetInstanceID()`，
+  两边永远不相等 → 点行只会亮图标，面板高亮 / 【已选中】 / 延迟关闭全部不生效。
+  统一改为 `Target.GetInstanceID()`。
+
 ## [0.1.23] - 2026-10-28
 
 ### 调整
