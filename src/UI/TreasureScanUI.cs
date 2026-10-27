@@ -49,6 +49,9 @@ namespace MagicTreasurePower.UI
 
         private static float _nextLootedCheck;
 
+        /// <summary>点了箱子行后延迟关闭面板的时刻（先让「已选中」反馈可见）。</summary>
+        private static float _closeAt;
+
         /// <summary>
         /// 本局扫描结果的快照：关掉面板后用 F8 可以直接重新打开，不必重扫（物品可能已被拿走）。
         /// </summary>
@@ -120,6 +123,7 @@ namespace MagicTreasurePower.UI
                 if (groups == null || groups.Count == 0)
                     return;
 
+                _closeAt = 0f;
                 _lastGroups = groups;
                 _lastWant = want;
                 _lastLevel = level;
@@ -428,14 +432,18 @@ namespace MagicTreasurePower.UI
 
                 TreasureTargetMarker.Toggle(group.Target);
 
-                // 选中了新的带路目标就关掉面板，好让玩家立刻看到脚下的绿线；
+                // 选中了新的透视目标：先高亮这一行并显示「已选中」，
+                // 0.45 秒后再关面板，让玩家看清自己点的是哪一个；
                 // 再点同一行是取消，面板保持打开
                 if (TreasureTargetMarker.ActiveTargetId == group.TargetId)
                 {
-                    Close();
+                    RefreshSelectionHighlight();
+                    _closeAt = Time.unscaledTime + 0.45f;
                     return;
                 }
 
+                // 取消选中：保持面板打开
+                _closeAt = 0f;
                 RefreshSelectionHighlight();
             }
             catch (Exception e)
@@ -464,11 +472,16 @@ namespace MagicTreasurePower.UI
                 return;
 
             bool looted = group.IsLooted();
-            string nameColor = looted ? "#8A8D91" : "#E8BF5C";
+            bool selected = TreasureTargetMarker.ActiveTargetId == group.TargetId;
+
+            string nameColor = selected ? "#F2D06B" : (looted ? "#8A8D91" : "#E8BF5C");
 
             string result =
                 "<color=" + nameColor + ">" + group.BoxName + "</color>" +
                 "  <color=#9A9B9F>· 距你 " + Mathf.RoundToInt(group.Distance) + " 米</color>";
+
+            if (selected)
+                result += "  <color=#F2D06B>【已选中】</color>";
 
             if (looted)
                 result += "  <color=#7FBF7F>已获取</color>";
@@ -498,6 +511,8 @@ namespace MagicTreasurePower.UI
 
                 pair.Value.color = pair.Key == active ? HeaderSelectedColor : HeaderColor;
             }
+
+            RefreshLootedLabels();
         }
 
         /// <summary>价值显示：1 万以上按「万」，否则原样输出。</summary>
@@ -531,6 +546,7 @@ namespace MagicTreasurePower.UI
                 BoxHeaderBackgrounds.Clear();
                 BoxGroups.Clear();
                 BoxHeaderTexts.Clear();
+                _closeAt = 0f;
 
                 if (_cursorCaptured)
                 {
@@ -671,6 +687,13 @@ namespace MagicTreasurePower.UI
 
                     // 走到箱子附近时标记会自动消失，这里同步取消高亮
                     RefreshSelectionHighlight();
+
+                    // 点了箱子行后延迟关闭，先让「已选中」反馈可见
+                    if (_closeAt > 0f && Time.unscaledTime >= _closeAt)
+                    {
+                        Close();
+                        return;
+                    }
 
                     // 面板开着期间每 1 秒同步「已获取」标记（比如刚开过箱子再按热键打开）
                     if (Time.unscaledTime >= _nextLootedCheck)
