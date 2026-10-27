@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -29,12 +29,6 @@ namespace MagicTreasurePower
 
         /// <summary>是否允许「带路绿线」。关闭后点箱子行不会画线。</summary>
         internal bool ShowRouteLine = true;
-
-        /// <summary>
-        /// 【测试用】是否把火眼金睛按 1 元上架到基地售货机。
-        /// 正式发布前应当改为 false，否则等于白送法宝。
-        /// </summary>
-        internal bool ShopSellHuoYanJinJing = true;
 
         private static ModConfig _current;
 
@@ -89,8 +83,7 @@ namespace MagicTreasurePower
 
             Diag.Log(
                 $"配置：重开热键={config.ScanHotkeyText}，" +
-                $"带路线={(config.ShowRouteLine ? "开" : "关")}，" +
-                $"售货机测试上架={(config.ShopSellHuoYanJinJing ? "开" : "关")}");
+                $"透视标记={(config.ShowRouteLine ? "开" : "关")}");
         }
 
         private static void Parse(string path, ModConfig config)
@@ -115,9 +108,6 @@ namespace MagicTreasurePower
                         break;
                     case "showrouteline":
                         config.ShowRouteLine = ParseBool(value, config.ShowRouteLine);
-                        break;
-                    case "shopsellhuoyanjinjing":
-                        config.ShopSellHuoYanJinJing = ParseBool(value, config.ShopSellHuoYanJinJing);
                         break;
                 }
             }
@@ -172,7 +162,6 @@ namespace MagicTreasurePower
 
                 SetLine(lines, "ScanHotkey", config.ScanHotkeyText);
                 SetLine(lines, "ShowRouteLine", config.ShowRouteLine ? "true" : "false");
-                SetLine(lines, "ShopSellHuoYanJinJing", config.ShopSellHuoYanJinJing ? "true" : "false");
 
                 File.WriteAllLines(_path, lines, new UTF8Encoding(true));
             }
@@ -211,13 +200,9 @@ namespace MagicTreasurePower
                 "# 取值是 Unity Input System 的按键名，例如：F8 / F7 / H / PageUp / Tab。\r\n" +
                 "ScanHotkey=F8\r\n" +
                 "\r\n" +
-                "# 是否允许「带路绿线」：在扫描面板里点箱子行时，从角色脚下画一条贴地绿线。\r\n" +
-                "# 改成 false 后点箱子行不再画线（面板其它功能不受影响）。\r\n" +
-                "ShowRouteLine=true\r\n" +
-                "\r\n" +
-                "# 【测试用】是否把「火眼金睛」按 1 元上架到基地售货机。\r\n" +
-                "# 正式发布前请改为 false，否则等于白送法宝。\r\n" +
-                "ShopSellHuoYanJinJing=true\r\n";
+                "# 是否允许「透视标记」：在扫描面板里点箱子行时，高亮目标（图标 + 遮挡时红边）。\r\n" +
+                "# 改成 false 后点箱子行不再高亮（面板其它功能不受影响）。\r\n" +
+                "ShowRouteLine=true\r\n";
 
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");
             File.WriteAllText(path, content, new UTF8Encoding(true));

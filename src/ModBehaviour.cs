@@ -75,10 +75,6 @@ namespace MagicTreasurePower
 
                 TreasureRegistrar.RegisterAll();
 
-                // 【测试用】按 1 元把火眼金睛上架到基地售货机（config.ini 可关）
-                if (ModConfig.Current.ShopSellHuoYanJinJing)
-                    TreasureShopStock.Install();
-
                 // ModSetting 可能比本 mod 晚加载：定时重试注册设置页
                 _modSettingsCoroutine = StartCoroutine(RegisterModSettingsWhenReady());
 
@@ -130,7 +126,6 @@ namespace MagicTreasurePower
                 // 带路绿线是独立的世界空间对象，停用时要清掉
                 TreasureTargetMarker.Clear();
 
-                TreasureShopStock.Uninstall();
                 TreasureModSettings.Reset();
 
                 if (_modSettingsCoroutine != null)

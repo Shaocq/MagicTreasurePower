@@ -69,10 +69,9 @@ namespace MagicTreasurePower.Treasures
         // ---------------------------------------------------------------- 火眼金睛
 
         /// <summary>
-        /// 每次进战局扫描后列出的物品件数。
-        /// 用户 2026-10-28 要求：先固定 5 件（暂时不做等级成长），以后要恢复随等级递增改这个数组即可。
+        /// 每次进战局扫描后列出的物品件数：Lv.1~7 = 1 / 1 / 2 / 2 / 3 / 4 / 5 件。
         /// </summary>
-        private static readonly int[] HuoYanJinJingCount = { 5, 5, 5, 5, 5, 5, 5 };
+        private static readonly int[] HuoYanJinJingCount = { 1, 1, 2, 2, 3, 4, 5 };
 
         private const string GoldColor = "#E8BF5C";
 

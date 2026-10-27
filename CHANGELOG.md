@@ -2,6 +2,15 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式。
 
+## [0.1.19] - 2026-10-28
+
+### 调整
+
+- **移除售货机测试上架**：删除 `TreasureShopStock` 与 `ShopSellHuoYanJinJing` 配置项，
+  火眼金睛不再以 1 元出现在基地售货机；`config.ini` 里的旧条目会被自动忽略。
+- **火眼金睛扫描件数恢复等级成长**：Lv.1~7 = **1 / 1 / 2 / 2 / 3 / 4 / 5** 件。
+- 配置项 `ShowRouteLine` 的注释与说明统一改为「透视标记」（键名沿用旧名，避免老配置失效）。
+
 ## [0.1.18] - 2026-10-28
 
 ### 修正（代码审查）
