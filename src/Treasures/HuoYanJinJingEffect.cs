@@ -270,7 +270,7 @@ namespace MagicTreasurePower.Treasures
                     }
 
                     // 锁着的房间（例如农场镇邪教房）：玩家打不开那扇门时，房间里的箱子不展示
-                    if (IsBehindLockedRoom(box, main))
+                    if (IsBehindLockedRoom(box.transform.position, main))
                     {
                         Diag.Log($"火眼金睛：跳过锁房里的物资箱「{BoxNameOf(box)}」（缺少开门钥匙）");
                         continue;
@@ -321,6 +321,59 @@ namespace MagicTreasurePower.Treasures
                 }
             }
 
+            // 地上的散落物品（没装进任何容器 / 槽位）
+            try
+            {
+                Item[] looseItems = UnityEngine.Object.FindObjectsOfType<Item>();
+                PetProxy pet = GetPet();
+
+                for (int i = 0; i < looseItems.Length; i++)
+                {
+                    Item item = looseItems[i];
+                    try
+                    {
+                        if (!IsLooseGroundItem(item, main, pet))
+                            continue;
+
+                        long value = ValueOf(item);
+                        if (value <= 0)
+                            continue;
+
+                        if (IsBehindLockedRoom(item.transform.position, main))
+                        {
+                            Diag.Log("火眼金睛：跳过锁房里的地面物品「" + item.DisplayName + "」");
+                            continue;
+                        }
+
+                        total++;
+
+                        string itemName = item.DisplayName;
+                        if (item.StackCount > 1)
+                            itemName += " ×" + item.StackCount;
+
+                        all.Add(new TreasureScanEntry
+                        {
+                            Item = item,
+                            GroundItem = item,
+                            BoxId = item.GetInstanceID(),
+                            BoxName = "地面掉落物",
+                            Distance = Vector3.Distance(origin, item.transform.position),
+                            Value = value,
+                            CachedName = itemName,
+                            CachedIcon = item.Icon,
+                        });
+                    }
+                    catch (Exception e)
+                    {
+                        Diag.Warn("火眼金睛：统计地面物品失败：" + e.Message);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Diag.Warn("火眼金睛：查找地面物品失败：" + e.Message);
+            }
+
             if (all.Count == 0)
                 return groups;
 
@@ -344,7 +397,9 @@ namespace MagicTreasurePower.Treasures
                 TreasureScanGroup group;
                 if (!byBox.TryGetValue(entry.BoxId, out group))
                 {
-                    group = new TreasureScanGroup(entry.Box, entry.BoxName, entry.Distance);
+                    group = entry.GroundItem != null
+                        ? new TreasureScanGroup(entry.GroundItem, entry.BoxName, entry.Distance)
+                        : new TreasureScanGroup(entry.Box, entry.BoxName, entry.Distance);
                     byBox.Add(entry.BoxId, group);
                     groups.Add(group);
                 }
@@ -353,6 +408,58 @@ namespace MagicTreasurePower.Treasures
             }
 
             return groups;
+        }
+
+        private static PetProxy GetPet()
+        {
+            try
+            {
+                LevelManager manager = LevelManager.Instance;
+                return manager != null ? manager.PetProxy : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// 是否是「散落在地上」的物品：不在背包 / 槽位 / 其它物品里，
+        /// 不是模板或 UI 展示，也不是玩家 / 宠物拿着的东西。
+        /// </summary>
+        private static bool IsLooseGroundItem(Item item, CharacterMainControl main, PetProxy pet)
+        {
+            if (item == null || item.IsBeingDestroyed)
+                return false;
+
+            GameObject go = item.gameObject;
+            if (go == null || !go.activeInHierarchy)
+                return false;
+
+            if (item.InInventory != null || item.PluggedIntoSlot != null || item.ParentItem != null)
+                return false;
+
+            // 模板 / 动态物品原型 / 其它未加载场景对象
+            UnityEngine.SceneManagement.Scene scene = go.scene;
+            if (!scene.IsValid() || !scene.isLoaded)
+                return false;
+
+            // 各 mod 注册用的原型都挂在 DontDestroyOnLoad 场景里，不是地上的东西
+            if (string.Equals(scene.name, "DontDestroyOnLoad", StringComparison.Ordinal))
+                return false;
+
+            // UI 里展示用的物品
+            if (item.GetComponentInParent<Canvas>() != null)
+                return false;
+
+            if (main != null && go.transform.IsChildOf(main.transform))
+                return false;
+
+            if (pet != null && pet.transform != null && go.transform.IsChildOf(pet.transform))
+                return false;
+
+            // 至少要有可见网格，避免把纯逻辑物品列出来
+            return item.GetComponentInChildren<Renderer>(true) != null;
         }
 
         /// <summary>
@@ -370,12 +477,12 @@ namespace MagicTreasurePower.Treasures
         ///   <item>玩家有钥匙（或已录入）的门不算隔断，房间照常显示。</item>
         /// </list>
         /// </summary>
-        private static bool IsBehindLockedRoom(InteractableLootbox box, CharacterMainControl main)
+        private static bool IsBehindLockedRoom(Vector3 boxPos, CharacterMainControl main)
         {
             try
             {
                 AstarPath astar = AstarPath.active;
-                if (astar == null || main == null || box == null)
+                if (astar == null || main == null)
                     return false;
 
                 NNInfo playerInfo = astar.GetNearest(main.transform.position, NNConstraint.Walkable);
@@ -384,7 +491,6 @@ namespace MagicTreasurePower.Treasures
 
                 uint playerArea = playerInfo.node.Area;
 
-                Vector3 boxPos = box.transform.position;
                 NNInfo boxInfo = astar.GetNearest(boxPos, NNConstraint.Walkable);
                 bool hasLocalNode = boxInfo.node != null &&
                                     (boxInfo.position - boxPos).sqrMagnitude <= 9f;
@@ -709,6 +815,7 @@ namespace MagicTreasurePower.Treasures
     {
         internal Item Item;
         internal InteractableLootbox Box;
+        internal Item GroundItem;
         internal int BoxId;
         internal string BoxName;
         internal float Distance;
@@ -727,10 +834,16 @@ namespace MagicTreasurePower.Treasures
     /// <summary>同一个物资箱里的若干件物品。</summary>
     internal sealed class TreasureScanGroup
     {
-        /// <summary>箱子本体（点行画带路线时要用它的位置）。</summary>
+        /// <summary>箱子本体（地面物品时为 null）。</summary>
         internal readonly InteractableLootbox Box;
 
-        internal readonly int BoxId;
+        /// <summary>地面掉落物的 Item（箱子时为 null）。</summary>
+        internal readonly Item GroundItem;
+
+        /// <summary>透视标记的目标（箱子或物品的 Transform）。</summary>
+        internal readonly Transform Target;
+
+        internal readonly int TargetId;
         internal readonly string BoxName;
         internal readonly float Distance;
         internal readonly List<TreasureScanEntry> Entries = new List<TreasureScanEntry>();
@@ -738,7 +851,17 @@ namespace MagicTreasurePower.Treasures
         internal TreasureScanGroup(InteractableLootbox box, string boxName, float distance)
         {
             Box = box;
-            BoxId = box != null ? box.GetInstanceID() : 0;
+            Target = box != null ? box.transform : null;
+            TargetId = box != null ? box.GetInstanceID() : 0;
+            BoxName = boxName;
+            Distance = distance;
+        }
+
+        internal TreasureScanGroup(Item groundItem, string boxName, float distance)
+        {
+            GroundItem = groundItem;
+            Target = groundItem != null ? groundItem.transform : null;
+            TargetId = groundItem != null ? groundItem.GetInstanceID() : 0;
             BoxName = boxName;
             Distance = distance;
         }
@@ -752,14 +875,20 @@ namespace MagicTreasurePower.Treasures
         {
             try
             {
-                if (Box == null)
-                    return false;
+                if (Box != null)
+                {
+                    if (Box.Looted)
+                        return true;
 
-                if (Box.Looted)
+                    Inventory inventory = Box.Inventory;
+                    return inventory != null && inventory.hasBeenInspectedInLootBox;
+                }
+
+                // 地面物品：被捡进背包 / 槽位或被销毁就算已获取
+                if (GroundItem == null)
                     return true;
 
-                Inventory inventory = Box.Inventory;
-                return inventory != null && inventory.hasBeenInspectedInLootBox;
+                return GroundItem.InInventory != null || GroundItem.PluggedIntoSlot != null;
             }
             catch
             {

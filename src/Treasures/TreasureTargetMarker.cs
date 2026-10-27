@@ -22,35 +22,35 @@ namespace MagicTreasurePower.Treasures
         private static TargetMarkerHost _host;
 
         /// <summary>当前标记的目标箱子实例 ID；没有标记时为 0。</summary>
-        internal static int ActiveBoxId => _host != null ? _host.TargetBoxId : 0;
+        internal static int ActiveTargetId => _host != null ? _host.TargetId : 0;
 
-        internal static void Toggle(InteractableLootbox box)
+        internal static void Toggle(Transform target)
         {
-            if (box == null)
+            if (target == null)
                 return;
 
             // 带路/透视标记的总开关（config.ini 的 ShowRouteLine）
             if (!ModConfig.Current.ShowRouteLine)
                 return;
 
-            int id = box.GetInstanceID();
-            if (_host != null && _host.TargetBoxId == id)
+            int id = target.GetInstanceID();
+            if (_host != null && _host.TargetId == id)
             {
                 Clear();
                 return;
             }
 
-            SetTarget(box);
+            SetTarget(target);
         }
 
-        internal static void SetTarget(InteractableLootbox box)
+        internal static void SetTarget(Transform target)
         {
             try
             {
-                if (box == null || !ModConfig.Current.ShowRouteLine)
+                if (target == null || !ModConfig.Current.ShowRouteLine)
                     return;
 
-                EnsureHost().SetTarget(box);
+                EnsureHost().SetTarget(target);
             }
             catch (Exception e)
             {
@@ -100,7 +100,7 @@ namespace MagicTreasurePower.Treasures
 
         private static readonly Color OutlineColor = new Color(1f, 0.18f, 0.18f, 1f);
 
-        private InteractableLootbox _box;
+        private Transform _target;
         private LevelManager _level;
         private Camera _camera;
 
@@ -116,12 +116,12 @@ namespace MagicTreasurePower.Treasures
         private Bounds _bounds;
         private float _nextVisibilityCheck;
 
-        internal int TargetBoxId { get; private set; }
+        internal int TargetId { get; private set; }
 
-        internal void SetTarget(InteractableLootbox box)
+        internal void SetTarget(Transform target)
         {
-            _box = box;
-            TargetBoxId = box != null ? box.GetInstanceID() : 0;
+            _target = target;
+            TargetId = target != null ? target.GetInstanceID() : 0;
             _level = LevelManager.Instance;
             _nextVisibilityCheck = 0f;
             _outlineVisible = false;
@@ -135,8 +135,8 @@ namespace MagicTreasurePower.Treasures
 
         internal void ClearTarget()
         {
-            _box = null;
-            TargetBoxId = 0;
+            _target = null;
+            TargetId = 0;
             _level = null;
             _outlineVisible = false;
 
@@ -150,9 +150,9 @@ namespace MagicTreasurePower.Treasures
         {
             try
             {
-                if (_box == null)
+                if (_target == null)
                 {
-                    if (TargetBoxId != 0)
+                    if (TargetId != 0)
                         ClearTarget();
                     return;
                 }
@@ -168,7 +168,7 @@ namespace MagicTreasurePower.Treasures
                 }
 
                 // 走到箱子附近就自动结束标记
-                if ((main.transform.position - _box.transform.position).sqrMagnitude <=
+                if ((main.transform.position - _target.position).sqrMagnitude <=
                     ArriveDistance * ArriveDistance)
                 {
                     ClearTarget();
@@ -254,7 +254,7 @@ namespace MagicTreasurePower.Treasures
 
         private void UpdateIconTransform()
         {
-            if (_canvas == null || _iconRect == null || _box == null)
+            if (_canvas == null || _iconRect == null || _target == null)
                 return;
 
             if (_camera == null || !_camera)
@@ -290,13 +290,13 @@ namespace MagicTreasurePower.Treasures
 
         private void RefreshBounds()
         {
-            if (_box == null)
+            if (_target == null)
                 return;
 
             bool has = false;
-            Bounds bounds = new Bounds(_box.transform.position, Vector3.one);
+            Bounds bounds = new Bounds(_target.position, Vector3.one);
 
-            Renderer[] renderers = _box.GetComponentsInChildren<Renderer>(true);
+            Renderer[] renderers = _target.GetComponentsInChildren<Renderer>(true);
             for (int i = 0; i < renderers.Length; i++)
             {
                 Renderer renderer = renderers[i];
@@ -317,7 +317,7 @@ namespace MagicTreasurePower.Treasures
             if (!has)
             {
                 // 没有可渲染网格（纯碰撞体）时，用碰撞盒兜底
-                Collider[] colliders = _box.GetComponentsInChildren<Collider>(true);
+                Collider[] colliders = _target.GetComponentsInChildren<Collider>(true);
                 for (int i = 0; i < colliders.Length; i++)
                 {
                     Collider collider = colliders[i];
@@ -337,7 +337,7 @@ namespace MagicTreasurePower.Treasures
             }
 
             if (!has)
-                bounds = new Bounds(_box.transform.position + Vector3.up * 0.5f, Vector3.one);
+                bounds = new Bounds(_target.position + Vector3.up * 0.5f, Vector3.one);
 
             bounds.Expand(0.06f);
             _bounds = bounds;
@@ -345,7 +345,7 @@ namespace MagicTreasurePower.Treasures
 
         private void RefreshOutlinePositions()
         {
-            if (_box == null)
+            if (_target == null)
                 return;
 
             EnsureOutline();
@@ -484,7 +484,7 @@ namespace MagicTreasurePower.Treasures
         /// </summary>
         private bool IsDirectlyVisible()
         {
-            if (_box == null)
+            if (_target == null)
                 return true;
 
             if (_camera == null || !_camera)
@@ -531,7 +531,7 @@ namespace MagicTreasurePower.Treasures
                 }
 
                 // 打到的是箱子自己的碰撞体也算看得到
-                if (hit.collider != null && hit.collider.transform.IsChildOf(_box.transform))
+                if (hit.collider != null && hit.collider.transform.IsChildOf(_target))
                     clear++;
             }
 

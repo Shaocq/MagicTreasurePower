@@ -319,7 +319,7 @@ namespace MagicTreasurePower.UI
 
         private static void BuildGroupHeader(Transform parent, TreasureScanGroup group, float y, TMP_FontAsset font)
         {
-            GameObject headerGo = new GameObject("GroupHeader_" + group.BoxId,
+            GameObject headerGo = new GameObject("GroupHeader_" + group.TargetId,
                 typeof(RectTransform), typeof(Image), typeof(Button));
             headerGo.transform.SetParent(parent, false);
 
@@ -341,15 +341,15 @@ namespace MagicTreasurePower.UI
             button.targetGraphic = background;
             button.onClick.AddListener(() => SelectBox(group));
 
-            BoxHeaderBackgrounds[group.BoxId] = background;
-            BoxGroups[group.BoxId] = group;
+            BoxHeaderBackgrounds[group.TargetId] = background;
+            BoxGroups[group.TargetId] = group;
 
             TextMeshProUGUI header = CreateText(headerGo.transform, "Text", string.Empty, 17f, TextMain, font,
                 Vector2.zero, Vector2.one, new Vector2(12f, 0f), new Vector2(-12f, 0f));
             header.alignment = TextAlignmentOptions.MidlineLeft;
             header.overflowMode = TextOverflowModes.Ellipsis;
 
-            BoxHeaderTexts[group.BoxId] = header;
+            BoxHeaderTexts[group.TargetId] = header;
             ApplyHeaderText(group, header);
         }
 
@@ -426,11 +426,11 @@ namespace MagicTreasurePower.UI
                     return;
                 }
 
-                TreasureTargetMarker.Toggle(group.Box);
+                TreasureTargetMarker.Toggle(group.Target);
 
                 // 选中了新的带路目标就关掉面板，好让玩家立刻看到脚下的绿线；
                 // 再点同一行是取消，面板保持打开
-                if (TreasureTargetMarker.ActiveBoxId == group.BoxId)
+                if (TreasureTargetMarker.ActiveTargetId == group.TargetId)
                 {
                     Close();
                     return;
@@ -489,7 +489,7 @@ namespace MagicTreasurePower.UI
         /// <summary>把「当前标记目标」的那一行标成金色底。</summary>
         private static void RefreshSelectionHighlight()
         {
-            int active = TreasureTargetMarker.ActiveBoxId;
+            int active = TreasureTargetMarker.ActiveTargetId;
 
             foreach (KeyValuePair<int, Image> pair in BoxHeaderBackgrounds)
             {
