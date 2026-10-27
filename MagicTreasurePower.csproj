@@ -31,6 +31,17 @@
         <Reference Include="$(DuckovPath)$(SubPath)UniTask.dll">
             <Private>False</Private>
         </Reference>
+        <!-- 锁房判定：用游戏自带 A* 寻路图的连通分量（AstarPath / GraphNode.Area）；
+             AstarPath 的基类 VersionedMonoBehaviour 在 PackageTools，MonoBehaviourGizmos 在 Drawing -->
+        <Reference Include="$(DuckovPath)$(SubPath)AstarPathfindingProject.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="$(DuckovPath)$(SubPath)PackageTools.dll">
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="$(DuckovPath)$(SubPath)Drawing.dll">
+            <Private>False</Private>
+        </Reference>
         <Reference Include="$(DuckovPath)$(SubPath)Unity*">
             <Private>False</Private>
         </Reference>

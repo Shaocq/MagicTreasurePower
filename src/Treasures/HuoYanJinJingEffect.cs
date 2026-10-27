@@ -6,6 +6,7 @@ using ItemStatsSystem;
 using ItemStatsSystem.Items;
 using MagicTreasurePower.Slots;
 using MagicTreasurePower.UI;
+using Pathfinding;
 using UnityEngine;
 
 namespace MagicTreasurePower.Treasures
@@ -268,6 +269,13 @@ namespace MagicTreasurePower.Treasures
                         continue;
                     }
 
+                    // 锁着的房间（例如农场镇邪教房）：玩家打不开那扇门时，房间里的箱子不展示
+                    if (IsBehindLockedRoom(box, main))
+                    {
+                        Diag.Log($"火眼金睛：跳过锁房里的物资箱「{BoxNameOf(box)}」（缺少开门钥匙）");
+                        continue;
+                    }
+
                     // 上锁且打不开的箱子直接跳过：展示了也拿不到
                     if (!CanOpen(main, box))
                     {
@@ -345,6 +353,131 @@ namespace MagicTreasurePower.Treasures
             }
 
             return groups;
+        }
+
+        /// <summary>
+        /// 箱子是否在「玩家打不开的锁门」后面。
+        ///
+        /// <para>原理：锁着的门（<see cref="Door"/> 上挂了 requireItem）会启用 NavmeshCut，
+        /// 把房间从寻路图上切断（<see cref="GraphNode.Area"/> 连通分量不同）；
+        /// 没锁的门 NavmeshCut 是关的，不影响连通性。</para>
+        ///
+        /// <para>判定步骤：</para>
+        /// <list type="number">
+        ///   <item>箱子与玩家在同一连通区域 → 能走过去，放行；</item>
+        ///   <item>否则遍历所有「关着的、玩家打不开的」锁门，在门两侧采样寻路节点，
+        ///         若箱子的连通区域正好是这扇门隔出来的 → 锁房，排除；</item>
+        ///   <item>玩家有钥匙（或已录入）的门不算隔断，房间照常显示。</item>
+        /// </list>
+        /// </summary>
+        private static bool IsBehindLockedRoom(InteractableLootbox box, CharacterMainControl main)
+        {
+            try
+            {
+                AstarPath astar = AstarPath.active;
+                if (astar == null || main == null || box == null)
+                    return false;
+
+                NNInfo playerInfo = astar.GetNearest(main.transform.position, NNConstraint.Walkable);
+                if (playerInfo.node == null)
+                    return false;
+
+                uint playerArea = playerInfo.node.Area;
+
+                Vector3 boxPos = box.transform.position;
+                NNInfo boxInfo = astar.GetNearest(boxPos, NNConstraint.Walkable);
+                bool hasLocalNode = boxInfo.node != null &&
+                                    (boxInfo.position - boxPos).sqrMagnitude <= 9f;
+
+                if (hasLocalNode && boxInfo.node.Area == playerArea)
+                    return false;
+
+                Door[] doors = UnityEngine.Object.FindObjectsOfType<Door>();
+
+                for (int i = 0; i < doors.Length; i++)
+                {
+                    Door door = doors[i];
+                    if (door == null || door.IsOpen)
+                        continue;
+
+                    InteractableBase interact = door.Interact;
+                    if (interact == null || !interact.requireItem)
+                        continue;
+
+                    if (CanUseRequiredItem(interact, main))
+                        continue; // 有钥匙，这扇门挡不住
+
+                    if (!hasLocalNode)
+                    {
+                        // 箱子附近完全没有寻路节点（房间被切得很干净）：门就在旁边就当锁房
+                        if ((door.transform.position - boxPos).sqrMagnitude <= 625f)
+                            return true;
+                        continue;
+                    }
+
+                    if (DoorSeparatesArea(astar, door, boxInfo.node.Area))
+                        return true;
+                }
+            }
+            catch (Exception e)
+            {
+                Diag.Warn($"火眼金睛：锁房判定失败（{e.GetType().Name}），本次不排除");
+            }
+
+            return false;
+        }
+
+        /// <summary>门两侧采样，判断给定连通分量是否是这扇门隔出来的。</summary>
+        private static bool DoorSeparatesArea(AstarPath astar, Door door, uint area)
+        {
+            Vector3 pos = door.transform.position;
+            Vector3 right = door.transform.right;
+            Vector3 forward = door.transform.forward;
+
+            float[] offsets = { 1.6f, 2.6f, 3.8f };
+
+            for (int axis = 0; axis < 2; axis++)
+            {
+                Vector3 dir = axis == 0 ? right : forward;
+                if (dir.sqrMagnitude < 0.01f)
+                    continue;
+
+                dir = dir.normalized;
+
+                for (int o = 0; o < offsets.Length; o++)
+                {
+                    for (int sign = -1; sign <= 1; sign += 2)
+                    {
+                        Vector3 sample = pos + dir * (sign * offsets[o]) + Vector3.up * 0.1f;
+                        NNInfo info = astar.GetNearest(sample, NNConstraint.Walkable);
+                        if (info.node == null)
+                            continue;
+                        if ((info.position - sample).sqrMagnitude > 9f)
+                            continue;
+
+                        if (info.node.Area == area)
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>玩家是否满足这个交互物需要的钥匙。</summary>
+        private static bool CanUseRequiredItem(InteractableBase interact, CharacterMainControl main)
+        {
+            if (interact == null || !interact.requireItem)
+                return true;
+
+            try
+            {
+                return interact.TryGetRequiredItem(main).hasItem;
+            }
+            catch
+            {
+                return FallbackHasKey(main, interact.requireItemId);
+            }
         }
 
         /// <summary>

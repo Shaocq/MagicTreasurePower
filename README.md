@@ -2,7 +2,7 @@
 
 [![游戏](https://img.shields.io/badge/游戏-Escape%20from%20Duckov-blue)](https://store.steampowered.com/app/3167020/)
 [![协议](https://img.shields.io/badge/协议-MIT-yellow)](LICENSE)
-[![版本](https://img.shields.io/badge/版本-0.1.13-brightgreen)](CHANGELOG.md)
+[![版本](https://img.shields.io/badge/版本-0.1.14-brightgreen)](CHANGELOG.md)
 
 > 为逃离鸭科夫新增「法宝」类物品：七件封神法宝、专属槽位、等级成长与八条法宝任务链。
 
@@ -12,7 +12,7 @@
 | 框架 | `Duckov.Modding.ModBehaviour` |
 | 前置 | HarmonyLib（工坊 `3589088839`），必须置于本 mod **之前**加载 |
 | 创意工坊 | 3823237404 |
-| 当前版本 | 0.1.13 |
+| 当前版本 | 0.1.14 |
 | 开源协议 | [MIT](LICENSE) |
 
 ## 安装
@@ -111,6 +111,7 @@
 - **火眼金睛**（进入战局时扫描全场 `InteractableLootbox`：按 `Item.Value × 堆叠数` 排序，
   取价值最高的 5 件（先固定 5 件，暂不做等级成长），按物资箱分组显示在一个可关闭的面板里。
   扫描范围只包含**地图上的固定物资箱**：玩家 / 宠物身上与被搬运的容器、尸体掉落物都不算；
+  锁着且玩家打不开的房间（如农场镇邪教房）整间不展示，有钥匙或已录入钥匙机则照常显示；
   本次战局已经打开过的箱子会在列表标题后标「已获取」。
   上锁判定完全复用原版 `InteractableBase.TryGetRequiredItem`——钥匙录入机解锁过，或装备槽 /
   主背包 / 容器 / 宠物背包里带着对应钥匙才算可开，打不开的箱子整箱不展示。
