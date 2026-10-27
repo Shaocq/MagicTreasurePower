@@ -109,6 +109,11 @@ namespace MagicTreasurePower.Treasures
         private Image _iconImage;
         private Image _iconBackground;
 
+        /// <summary>图标下方的红色指示箭头（上下浮动）。</summary>
+        private RectTransform _arrowRect;
+        private Image _arrowImage;
+        private static Sprite _arrowSprite;
+
         private Material _outlineMaterial;
         private LineRenderer[] _edges;
         private bool _outlineVisible;
@@ -179,6 +184,7 @@ namespace MagicTreasurePower.Treasures
                     _canvas.gameObject.SetActive(true);
 
                 UpdateIconTransform();
+                UpdateArrowBob();
 
                 if (Time.unscaledTime < _nextVisibilityCheck)
                     return;
@@ -249,7 +255,73 @@ namespace MagicTreasurePower.Treasures
                 _iconBackground.color = OutlineColor;
             }
 
+            // 图标下方的红色箭头：朝下、上下浮动，提示「就是下面这个东西」
+            GameObject arrowGo = new GameObject("Arrow", typeof(RectTransform), typeof(Image));
+            arrowGo.transform.SetParent(backgroundGo.transform, false);
+
+            _arrowImage = arrowGo.GetComponent<Image>();
+            _arrowImage.sprite = GetArrowSprite();
+            _arrowImage.preserveAspect = true;
+            _arrowImage.raycastTarget = false;
+            _arrowImage.color = OutlineColor;
+
+            _arrowRect = (RectTransform)arrowGo.transform;
+            _arrowRect.anchorMin = new Vector2(0.5f, 0f);
+            _arrowRect.anchorMax = new Vector2(0.5f, 0f);
+            _arrowRect.pivot = new Vector2(0.5f, 1f);
+            _arrowRect.sizeDelta = new Vector2(20f, 16f);
+            _arrowRect.anchoredPosition = new Vector2(0f, -2f);
+
             _canvas.gameObject.SetActive(false);
+        }
+
+        /// <summary>箭头上下浮动：正弦，±4 像素，看起来是活动的指示。</summary>
+        private void UpdateArrowBob()
+        {
+            if (_arrowRect == null)
+                return;
+
+            float offset = Mathf.Sin(Time.unscaledTime * 6f) * 4f;
+            _arrowRect.anchoredPosition = new Vector2(0f, -2f + offset);
+        }
+
+        /// <summary>运行时生成一个朝下的红色三角形箭头（不依赖字体字形）。</summary>
+        private static Sprite GetArrowSprite()
+        {
+            if (_arrowSprite != null)
+                return _arrowSprite;
+
+            const int width = 28;
+            const int height = 20;
+
+            Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+
+            for (int y = 0; y < height; y++)
+            {
+                // 底尖上宽：y=0 是尖端，y=height 是宽边
+                float half = (y / (float)(height - 1)) * (width * 0.5f);
+
+                for (int x = 0; x < width; x++)
+                {
+                    float dx = Mathf.Abs(x + 0.5f - width * 0.5f);
+                    bool inside = dx <= half;
+                    texture.SetPixel(x, y, inside
+                        ? new Color(1f, 1f, 1f, 1f)
+                        : new Color(1f, 1f, 1f, 0f));
+                }
+            }
+
+            texture.Apply();
+
+            _arrowSprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, width, height),
+                new Vector2(0.5f, 1f),
+                100f);
+
+            return _arrowSprite;
         }
 
         private void UpdateIconTransform()

@@ -2,7 +2,7 @@
 
 [![游戏](https://img.shields.io/badge/游戏-Escape%20from%20Duckov-blue)](https://store.steampowered.com/app/3167020/)
 [![协议](https://img.shields.io/badge/协议-MIT-yellow)](LICENSE)
-[![版本](https://img.shields.io/badge/版本-0.1.16-brightgreen)](CHANGELOG.md)
+[![版本](https://img.shields.io/badge/版本-0.1.17-brightgreen)](CHANGELOG.md)
 
 > 为逃离鸭科夫新增「法宝」类物品：七件封神法宝、专属槽位、等级成长与八条法宝任务链。
 
@@ -12,7 +12,7 @@
 | 框架 | `Duckov.Modding.ModBehaviour` |
 | 前置 | HarmonyLib（工坊 `3589088839`），必须置于本 mod **之前**加载 |
 | 创意工坊 | 3823237404 |
-| 当前版本 | 0.1.16 |
+| 当前版本 | 0.1.17 |
 | 开源协议 | [MIT](LICENSE) |
 
 ## 安装
