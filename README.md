@@ -2,7 +2,7 @@
 
 [![游戏](https://img.shields.io/badge/游戏-Escape%20from%20Duckov-blue)](https://store.steampowered.com/app/3167020/)
 [![协议](https://img.shields.io/badge/协议-MIT-yellow)](LICENSE)
-[![版本](https://img.shields.io/badge/版本-0.1.19-brightgreen)](CHANGELOG.md)
+[![版本](https://img.shields.io/badge/版本-0.1.20-brightgreen)](CHANGELOG.md)
 
 > 为逃离鸭科夫新增「法宝」类物品：七件封神法宝、专属槽位、等级成长与八条法宝任务链。
 
@@ -12,7 +12,7 @@
 | 框架 | `Duckov.Modding.ModBehaviour` |
 | 前置 | HarmonyLib（工坊 `3589088839`），必须置于本 mod **之前**加载 |
 | 创意工坊 | 3823237404 |
-| 当前版本 | 0.1.19 |
+| 当前版本 | 0.1.20 |
 | 开源协议 | [MIT](LICENSE) |
 
 ## 安装
@@ -32,7 +32,7 @@
 | 键 | 默认值 | 说明 |
 | --- | --- | --- |
 | `ScanHotkey` | `F8` | 重开扫描面板的快捷键（Unity Input System 按键名，如 `F8` / `F7` / `H` / `PageUp`） |
-| `ShowRouteLine` | `true` | 是否允许点箱子行开启「透视标记」；`false` 则只保留列表（键名沿用旧名，功能已是透视标记） |
+| `ShowRouteLine` | `true` | 是否允许点箱子行显示「透视标记」（图标 + 箭头）；`false` 则只保留列表（键名沿用旧名） |
 
 > **`lib/0Harmony.dll` 不在仓库内。** 需要从源码编译时，请把创意工坊前置 HarmonyLib 目录下的 `0Harmony.dll` 复制到 `lib/` 下。
 
@@ -115,10 +115,10 @@
   本次战局已经打开过的箱子、被捡走的地面物品会在列表标题后标「已获取」。
   上锁判定完全复用原版 `InteractableBase.TryGetRequiredItem`——钥匙录入机解锁过，或装备槽 /
   主背包 / 容器 / 宠物背包里带着对应钥匙才算可开，打不开的箱子整箱不展示。
-  面板里点箱子行（或其任意物品行）会从角色脚下画一条贴地绿线带路（直线，不做避障）；
-  选中后自动关掉面板好看线，
-  按 **F8** 可按本局扫描结果重新打开（不重新扫描）；再点同一行取消、走到 3 米内自动消失；
-  实现见 `src/Treasures/HuoYanJinJingEffect.cs`、`src/Treasures/TreasureRouteLine.cs`
+  面板里点箱子行（或其任意物品行）会开启**透视标记**：目标头顶显示火眼金睛图标，
+  图标下方有上下浮动的红色箭头持续指向目标；选中后自动关掉面板好看标记，
+  按 **F8**（可配置）重新打开（不重扫）或关闭面板；再点同一行取消、走到 3 米内自动消失；
+  实现见 `src/Treasures/HuoYanJinJingEffect.cs`、`src/Treasures/TreasureTargetMarker.cs`
   与 `src/UI/TreasureScanUI.cs`）。
 
 至此七件法宝的能力全部实装。

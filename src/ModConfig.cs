@@ -200,8 +200,8 @@ namespace MagicTreasurePower
                 "# 取值是 Unity Input System 的按键名，例如：F8 / F7 / H / PageUp / Tab。\r\n" +
                 "ScanHotkey=F8\r\n" +
                 "\r\n" +
-                "# 是否允许「透视标记」：在扫描面板里点箱子行时，高亮目标（图标 + 遮挡时红边）。\r\n" +
-                "# 改成 false 后点箱子行不再高亮（面板其它功能不受影响）。\r\n" +
+                "# 是否允许「透视标记」：在扫描面板里点箱子行时，在目标头顶显示图标与浮动箭头。\r\n" +
+                "# 改成 false 后点箱子行不再显示标记（面板其它功能不受影响）。\r\n" +
                 "ShowRouteLine=true\r\n";
 
             Directory.CreateDirectory(Path.GetDirectoryName(path) ?? ".");

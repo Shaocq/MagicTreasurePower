@@ -1,28 +1,26 @@
 using System;
-using Duckov.Utilities;
 using ItemStatsSystem;
 using MagicTreasurePower.UI;
 using UnityEngine;
-using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 namespace MagicTreasurePower.Treasures
 {
     /// <summary>
-    /// 火眼金睛的「透视标记」：选中物资箱后，
-    /// <list type="bullet">
-    ///   <item>箱子头顶始终挂一个火眼金睛图标（屏幕空间，永远可见）；</item>
-    ///   <item>箱子被墙/遮挡物挡住时，给它画一圈**穿墙可见的红边**；</item>
-    ///   <item>走到能直接看到箱子时，红边消失，只保留图标。</item>
-    /// </list>
+    /// 火眼金睛的「透视标记」：选中物资箱 / 地面物品后，
+    /// 在目标头顶显示一个火眼金睛图标，图标下方带一个上下浮动的红色箭头。
     ///
-    /// <para>再点同一行取消；走到 3 米内自动结束；换图 / 回基地 / 停用 mod 自动清除。</para>
+    /// <para><b>为什么不再画红边：</b>用户 2026-10-28 反馈穿墙红边太花，去掉红边，
+    /// 只保留图标 + 箭头作为指引。</para>
+    ///
+    /// <para>再点同一行取消；走到 3 米内自动结束；目标被捡走 / 销毁、换图 / 回基地、
+    /// 停用 mod 时自动清除。</para>
     /// </summary>
     internal static class TreasureTargetMarker
     {
         private static TargetMarkerHost _host;
 
-        /// <summary>当前标记的目标箱子实例 ID；没有标记时为 0。</summary>
+        /// <summary>当前标记的目标实例 ID；没有标记时为 0。</summary>
         internal static int ActiveTargetId => _host != null ? _host.TargetId : 0;
 
         internal static void Toggle(Transform target)
@@ -30,7 +28,7 @@ namespace MagicTreasurePower.Treasures
             if (target == null)
                 return;
 
-            // 带路/透视标记的总开关（config.ini 的 ShowRouteLine）
+            // 透视标记的总开关（config.ini 的 ShowRouteLine）
             if (!ModConfig.Current.ShowRouteLine)
                 return;
 
@@ -81,7 +79,7 @@ namespace MagicTreasurePower.Treasures
         }
     }
 
-    /// <summary>透视标记的宿主：屏幕图标 + 穿墙红边。</summary>
+    /// <summary>透视标记的宿主：屏幕空间图标 + 浮动箭头。</summary>
     internal sealed class TargetMarkerHost : MonoBehaviour
     {
         /// <summary>走到这个距离内认为「到了」，标记自动消失（米）。</summary>
@@ -90,16 +88,10 @@ namespace MagicTreasurePower.Treasures
         /// <summary>图标尺寸（UI 参考分辨率下的像素）。</summary>
         private const float IconSize = 46f;
 
-        /// <summary>图标相对箱子包围盒顶部的抬高（米）。</summary>
+        /// <summary>图标相对目标包围盒顶部的抬高（米）。</summary>
         private const float IconLift = 0.45f;
 
-        /// <summary>红边线宽（米）。</summary>
-        private const float OutlineWidth = 0.025f;
-
-        /// <summary>遮挡检测间隔（秒）。</summary>
-        private const float VisibilityInterval = 0.2f;
-
-        private static readonly Color OutlineColor = new Color(1f, 0.18f, 0.18f, 1f);
+        private static readonly Color MarkerColor = new Color(1f, 0.18f, 0.18f, 1f);
 
         private Transform _target;
         private LevelManager _level;
@@ -115,12 +107,7 @@ namespace MagicTreasurePower.Treasures
         private Image _arrowImage;
         private static Sprite _arrowSprite;
 
-        private Material _outlineMaterial;
-        private LineRenderer[] _edges;
-        private bool _outlineVisible;
-
         private Bounds _bounds;
-        private float _nextVisibilityCheck;
 
         internal int TargetId { get; private set; }
 
@@ -129,14 +116,11 @@ namespace MagicTreasurePower.Treasures
             _target = target;
             TargetId = target != null ? target.GetInstanceID() : 0;
             _level = LevelManager.Instance;
-            _nextVisibilityCheck = 0f;
-            _outlineVisible = false;
 
             EnsureIcon();
             RefreshBounds();
-            RefreshOutlinePositions();
-            ApplyOutlineVisibility();
             UpdateIconTransform();
+            UpdateArrowBob();
         }
 
         internal void ClearTarget()
@@ -144,12 +128,9 @@ namespace MagicTreasurePower.Treasures
             _target = null;
             TargetId = 0;
             _level = null;
-            _outlineVisible = false;
 
             if (_canvas != null)
                 _canvas.gameObject.SetActive(false);
-
-            ApplyOutlineVisibility();
         }
 
         private void Update()
@@ -182,7 +163,7 @@ namespace MagicTreasurePower.Treasures
                     return;
                 }
 
-                // 走到箱子附近就自动结束标记
+                // 走到目标附近就自动结束标记
                 if ((main.transform.position - _target.position).sqrMagnitude <=
                     ArriveDistance * ArriveDistance)
                 {
@@ -195,18 +176,6 @@ namespace MagicTreasurePower.Treasures
 
                 UpdateIconTransform();
                 UpdateArrowBob();
-
-                if (Time.unscaledTime < _nextVisibilityCheck)
-                    return;
-
-                _nextVisibilityCheck = Time.unscaledTime + VisibilityInterval;
-
-                bool visible = IsDirectlyVisible();
-                if (visible != !_outlineVisible)
-                {
-                    _outlineVisible = !visible;
-                    ApplyOutlineVisibility();
-                }
             }
             catch (Exception e)
             {
@@ -262,7 +231,7 @@ namespace MagicTreasurePower.Treasures
             if (_iconImage.sprite == null)
             {
                 // 图标没注册成功（ID 冲突等）时至少给个红点，别让标记彻底消失
-                _iconBackground.color = OutlineColor;
+                _iconBackground.color = MarkerColor;
             }
 
             // 图标下方的红色箭头：朝下、上下浮动，提示「就是下面这个东西」
@@ -273,7 +242,7 @@ namespace MagicTreasurePower.Treasures
             _arrowImage.sprite = GetArrowSprite();
             _arrowImage.preserveAspect = true;
             _arrowImage.raycastTarget = false;
-            _arrowImage.color = OutlineColor;
+            _arrowImage.color = MarkerColor;
 
             _arrowRect = (RectTransform)arrowGo.transform;
             _arrowRect.anchorMin = new Vector2(0.5f, 0f);
@@ -368,7 +337,7 @@ namespace MagicTreasurePower.Treasures
             _iconRect.position = new Vector3(x, y, 0f);
         }
 
-        // ------------------------------------------------------------ 红边
+        // ------------------------------------------------------------ 包围盒（图标定位用）
 
         private void RefreshBounds()
         {
@@ -423,201 +392,6 @@ namespace MagicTreasurePower.Treasures
 
             bounds.Expand(0.06f);
             _bounds = bounds;
-        }
-
-        private void RefreshOutlinePositions()
-        {
-            if (_target == null)
-                return;
-
-            EnsureOutline();
-
-            Vector3 c = _bounds.center;
-            Vector3 e = _bounds.extents;
-
-            Vector3[] p =
-            {
-                c + new Vector3(-e.x, -e.y, -e.z),
-                c + new Vector3(e.x, -e.y, -e.z),
-                c + new Vector3(-e.x, -e.y, e.z),
-                c + new Vector3(e.x, -e.y, e.z),
-                c + new Vector3(-e.x, e.y, -e.z),
-                c + new Vector3(e.x, e.y, -e.z),
-                c + new Vector3(-e.x, e.y, e.z),
-                c + new Vector3(e.x, e.y, e.z),
-            };
-
-            int[,] edges =
-            {
-                { 0, 1 }, { 1, 3 }, { 3, 2 }, { 2, 0 },
-                { 4, 5 }, { 5, 7 }, { 7, 6 }, { 6, 4 },
-                { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 },
-            };
-
-            for (int i = 0; i < _edges.Length; i++)
-            {
-                LineRenderer line = _edges[i];
-                if (line == null)
-                    continue;
-
-                line.SetPosition(0, p[edges[i, 0]]);
-                line.SetPosition(1, p[edges[i, 1]]);
-            }
-        }
-
-        private void EnsureOutline()
-        {
-            if (_edges != null)
-                return;
-
-            if (_outlineMaterial == null)
-                _outlineMaterial = CreateOutlineMaterial();
-
-            GameObject root = new GameObject("Outline");
-            root.transform.SetParent(transform, false);
-
-            _edges = new LineRenderer[12];
-            for (int i = 0; i < _edges.Length; i++)
-            {
-                GameObject lineGo = new GameObject("Edge_" + i);
-                lineGo.transform.SetParent(root.transform, false);
-
-                LineRenderer line = lineGo.AddComponent<LineRenderer>();
-                line.useWorldSpace = true;
-                line.positionCount = 2;
-                line.startWidth = OutlineWidth;
-                line.endWidth = OutlineWidth;
-                line.numCapVertices = 0;
-                line.numCornerVertices = 0;
-                line.textureMode = LineTextureMode.Stretch;
-                line.alignment = LineAlignment.View;
-                line.shadowCastingMode = ShadowCastingMode.Off;
-                line.receiveShadows = false;
-                line.startColor = OutlineColor;
-                line.endColor = OutlineColor;
-
-                if (_outlineMaterial != null)
-                    line.material = _outlineMaterial;
-
-                line.enabled = false;
-
-                _edges[i] = line;
-            }
-        }
-
-        /// <summary>
-        /// 穿墙材质：优先 Hidden/Internal-Colored + ZTest Always（URP 下也能穿墙）；
-        /// 没有这个着色器就退回 Sprites/Default（只做普通描边，不穿墙）。
-        /// </summary>
-        private static Material CreateOutlineMaterial()
-        {
-            Shader shader = Shader.Find("Hidden/Internal-Colored");
-            bool throughWall = shader != null;
-
-            if (shader == null)
-                shader = Shader.Find("Sprites/Default");
-            if (shader == null)
-                shader = Shader.Find("Universal Render Pipeline/Unlit");
-
-            if (shader == null)
-                return null;
-
-            Material material = new Material(shader);
-            material.hideFlags = HideFlags.DontSave;
-
-            if (material.HasProperty("_Color"))
-                material.SetColor("_Color", OutlineColor);
-            if (material.HasProperty("_BaseColor"))
-                material.SetColor("_BaseColor", OutlineColor);
-
-            if (throughWall)
-            {
-                if (material.HasProperty("_ZTest"))
-                    material.SetInt("_ZTest", (int)CompareFunction.Always);
-                if (material.HasProperty("_ZWrite"))
-                    material.SetInt("_ZWrite", 0);
-                if (material.HasProperty("_Cull"))
-                    material.SetInt("_Cull", 0);
-                if (material.HasProperty("_SrcBlend"))
-                    material.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
-                if (material.HasProperty("_DstBlend"))
-                    material.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
-            }
-
-            return material;
-        }
-
-        private void ApplyOutlineVisibility()
-        {
-            if (_edges == null)
-                return;
-
-            for (int i = 0; i < _edges.Length; i++)
-            {
-                LineRenderer line = _edges[i];
-                if (line != null)
-                    line.enabled = _outlineVisible;
-            }
-        }
-
-        /// <summary>
-        /// 玩家是否「能直接看到」这个箱子：从摄像机向包围盒的几个采样点连线，
-        /// 被墙 / 半高障碍挡住就算看不到（这时才显示红边）。
-        /// </summary>
-        private bool IsDirectlyVisible()
-        {
-            if (_target == null)
-                return true;
-
-            if (_camera == null || !_camera)
-                _camera = Camera.main;
-
-            if (_camera == null)
-                return true;
-
-            int mask = 0;
-            try
-            {
-                mask = GameplayDataSettings.Layers.wallLayerMask |
-                       GameplayDataSettings.Layers.halfObsticleLayer;
-            }
-            catch
-            {
-            }
-
-            if (mask == 0)
-                return true;
-
-            Vector3 origin = _camera.transform.position;
-            Vector3 c = _bounds.center;
-            Vector3 e = _bounds.extents;
-
-            Vector3[] samples =
-            {
-                c,
-                c + new Vector3(0f, e.y, 0f),
-                c + new Vector3(e.x, 0f, 0f),
-                c + new Vector3(-e.x, 0f, 0f),
-                c + new Vector3(0f, 0f, e.z),
-            };
-
-            int clear = 0;
-
-            for (int i = 0; i < samples.Length; i++)
-            {
-                RaycastHit hit;
-                if (!Physics.Linecast(origin, samples[i], out hit, mask, QueryTriggerInteraction.Ignore))
-                {
-                    clear++;
-                    continue;
-                }
-
-                // 打到的是箱子自己的碰撞体也算看得到
-                if (hit.collider != null && hit.collider.transform.IsChildOf(_target))
-                    clear++;
-            }
-
-            return clear >= 2;
         }
     }
 }

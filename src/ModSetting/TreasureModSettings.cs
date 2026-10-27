@@ -135,7 +135,7 @@ namespace MagicTreasurePower.ModSettingIntegration
             // 2) 透视标记开关
             ModSettingAPI.AddToggle(
                 KeyRoute,
-                "允许透视标记（点箱子行时高亮箱子）",
+                "允许透视标记（点箱子行显示图标与箭头）",
                 config.ShowRouteLine,
                 value =>
                 {
