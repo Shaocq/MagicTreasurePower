@@ -37,6 +37,7 @@ namespace MagicTreasurePower.UI
         private static readonly Color RowColor = new Color(0.13f, 0.14f, 0.16f, 1f);
         private static readonly Color HeaderColor = new Color(1f, 1f, 1f, 0.03f);
         private static readonly Color HeaderSelectedColor = new Color(0.22f, 0.19f, 0.11f, 1f);
+        private static readonly Color RowSelectedColor = new Color(0.24f, 0.21f, 0.12f, 1f);
         private static readonly Color TextMain = new Color(0.93f, 0.91f, 0.86f, 1f);
         private static readonly Color TextSub = new Color(0.62f, 0.63f, 0.67f, 1f);
 
@@ -46,6 +47,9 @@ namespace MagicTreasurePower.UI
         /// <summary>箱子标题行对应的分组与文字，用于刷新「已获取」标记。</summary>
         private static readonly Dictionary<int, TreasureScanGroup> BoxGroups = new Dictionary<int, TreasureScanGroup>();
         private static readonly Dictionary<int, TextMeshProUGUI> BoxHeaderTexts = new Dictionary<int, TextMeshProUGUI>();
+
+        /// <summary>每个目标下的物品行底图，用于把「已选中」的整组行一起点亮。</summary>
+        private static readonly Dictionary<int, List<Image>> BoxRowBackgrounds = new Dictionary<int, List<Image>>();
 
         private static float _nextLootedCheck;
 
@@ -377,6 +381,15 @@ namespace MagicTreasurePower.UI
             background.color = RowColor;
             background.raycastTarget = true;
 
+            List<Image> rows;
+            if (!BoxRowBackgrounds.TryGetValue(group.TargetId, out rows))
+            {
+                rows = new List<Image>();
+                BoxRowBackgrounds[group.TargetId] = rows;
+            }
+
+            rows.Add(background);
+
             // 点物品行同样选中它所在的箱子，和点箱子标题等价
             Button button = row.GetComponent<Button>();
             button.transition = Selectable.Transition.None;
@@ -420,7 +433,7 @@ namespace MagicTreasurePower.UI
         {
             try
             {
-                if (group == null || group.Box == null)
+                if (group == null || group.Target == null)
                     return;
 
                 // 配置里关掉「带路绿线」后，点箱子行不再画线，也不关面板
@@ -437,8 +450,9 @@ namespace MagicTreasurePower.UI
                 // 再点同一行是取消，面板保持打开
                 if (TreasureTargetMarker.ActiveTargetId == group.TargetId)
                 {
+                    Diag.Log("扫描面板：已选中「" + group.BoxName + "」");
                     RefreshSelectionHighlight();
-                    _closeAt = Time.unscaledTime + 0.45f;
+                    _closeAt = Time.unscaledTime + 0.7f;
                     return;
                 }
 
@@ -460,7 +474,7 @@ namespace MagicTreasurePower.UI
                 return;
 
             _routeDisabledWarned = true;
-            Diag.Log("带路线已在 config.ini（ShowRouteLine=false）中关闭，点箱子行不会画线");
+            Diag.Log("透视标记已在 config.ini（ShowRouteLine=false）中关闭，点箱子行不会显示标记");
         }
 
         /// <summary>
@@ -512,6 +526,21 @@ namespace MagicTreasurePower.UI
                 pair.Value.color = pair.Key == active ? HeaderSelectedColor : HeaderColor;
             }
 
+            foreach (KeyValuePair<int, List<Image>> pair in BoxRowBackgrounds)
+            {
+                if (pair.Value == null)
+                    continue;
+
+                Color color = pair.Key == active ? RowSelectedColor : RowColor;
+
+                for (int i = 0; i < pair.Value.Count; i++)
+                {
+                    Image image = pair.Value[i];
+                    if (image != null)
+                        image.color = color;
+                }
+            }
+
             RefreshLootedLabels();
         }
 
@@ -546,6 +575,7 @@ namespace MagicTreasurePower.UI
                 BoxHeaderBackgrounds.Clear();
                 BoxGroups.Clear();
                 BoxHeaderTexts.Clear();
+                BoxRowBackgrounds.Clear();
                 _closeAt = 0f;
 
                 if (_cursorCaptured)
