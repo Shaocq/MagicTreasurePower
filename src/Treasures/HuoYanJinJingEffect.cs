@@ -609,5 +609,29 @@ namespace MagicTreasurePower.Treasures
             BoxName = boxName;
             Distance = distance;
         }
+
+        /// <summary>
+        /// 这个箱子是否已经被打开过（本次战局内）。
+        /// 原版有两处记录：<c>LootView</c> 的「曾经打开过」集合，以及箱子 Inventory 上的
+        /// <c>hasBeenInspectedInLootBox</c>（交互结束就置 true），任一为真即算已获取。
+        /// </summary>
+        internal bool IsLooted()
+        {
+            try
+            {
+                if (Box == null)
+                    return false;
+
+                if (Box.Looted)
+                    return true;
+
+                Inventory inventory = Box.Inventory;
+                return inventory != null && inventory.hasBeenInspectedInLootBox;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

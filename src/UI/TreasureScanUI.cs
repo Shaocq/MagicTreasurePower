@@ -40,8 +40,14 @@ namespace MagicTreasurePower.UI
         private static readonly Color TextMain = new Color(0.93f, 0.91f, 0.86f, 1f);
         private static readonly Color TextSub = new Color(0.62f, 0.63f, 0.67f, 1f);
 
-        /// <summary>箱子标题行的底图，用于标记「当前带路目标」。</summary>
+        /// <summary>箱子标题行的底图，用于标记「当前标记目标」。</summary>
         private static readonly Dictionary<int, Image> BoxHeaderBackgrounds = new Dictionary<int, Image>();
+
+        /// <summary>箱子标题行对应的分组与文字，用于刷新「已获取」标记。</summary>
+        private static readonly Dictionary<int, TreasureScanGroup> BoxGroups = new Dictionary<int, TreasureScanGroup>();
+        private static readonly Dictionary<int, TextMeshProUGUI> BoxHeaderTexts = new Dictionary<int, TextMeshProUGUI>();
+
+        private static float _nextLootedCheck;
 
         /// <summary>
         /// 本局扫描结果的快照：关掉面板后用 F8 可以直接重新打开，不必重扫（物品可能已被拿走）。
@@ -336,15 +342,15 @@ namespace MagicTreasurePower.UI
             button.onClick.AddListener(() => SelectBox(group));
 
             BoxHeaderBackgrounds[group.BoxId] = background;
+            BoxGroups[group.BoxId] = group;
 
-            string distance = "· 距你 " + Mathf.RoundToInt(group.Distance) + " 米";
-            string text = "<color=#E8BF5C>" + group.BoxName + "</color>" +
-                          "  <color=#9A9B9F>" + distance + "</color>";
-
-            TextMeshProUGUI header = CreateText(headerGo.transform, "Text", text, 17f, TextMain, font,
+            TextMeshProUGUI header = CreateText(headerGo.transform, "Text", string.Empty, 17f, TextMain, font,
                 Vector2.zero, Vector2.one, new Vector2(12f, 0f), new Vector2(-12f, 0f));
             header.alignment = TextAlignmentOptions.MidlineLeft;
             header.overflowMode = TextOverflowModes.Ellipsis;
+
+            BoxHeaderTexts[group.BoxId] = header;
+            ApplyHeaderText(group, header);
         }
 
         private static void BuildItemRow(
@@ -449,7 +455,38 @@ namespace MagicTreasurePower.UI
             Diag.Log("带路线已在 config.ini（ShowRouteLine=false）中关闭，点箱子行不会画线");
         }
 
-        /// <summary>把「当前带路目标」的那一行标成金色底。</summary>
+        /// <summary>
+        /// 箱子标题文案：名称 + 距离；本次战局已经打开过的箱子追加「已获取」并把名字压暗。
+        /// </summary>
+        private static void ApplyHeaderText(TreasureScanGroup group, TextMeshProUGUI text)
+        {
+            if (group == null || text == null)
+                return;
+
+            bool looted = group.IsLooted();
+            string nameColor = looted ? "#8A8D91" : "#E8BF5C";
+
+            string result =
+                "<color=" + nameColor + ">" + group.BoxName + "</color>" +
+                "  <color=#9A9B9F>· 距你 " + Mathf.RoundToInt(group.Distance) + " 米</color>";
+
+            if (looted)
+                result += "  <color=#7FBF7F>已获取</color>";
+
+            text.text = result;
+        }
+
+        private static void RefreshLootedLabels()
+        {
+            foreach (KeyValuePair<int, TreasureScanGroup> pair in BoxGroups)
+            {
+                TextMeshProUGUI text;
+                if (BoxHeaderTexts.TryGetValue(pair.Key, out text) && text != null)
+                    ApplyHeaderText(pair.Value, text);
+            }
+        }
+
+        /// <summary>把「当前标记目标」的那一行标成金色底。</summary>
         private static void RefreshSelectionHighlight()
         {
             int active = TreasureTargetMarker.ActiveBoxId;
@@ -492,6 +529,8 @@ namespace MagicTreasurePower.UI
                 }
 
                 BoxHeaderBackgrounds.Clear();
+                BoxGroups.Clear();
+                BoxHeaderTexts.Clear();
 
                 if (_cursorCaptured)
                 {
@@ -630,8 +669,15 @@ namespace MagicTreasurePower.UI
                     Cursor.visible = true;
                     Cursor.lockState = CursorLockMode.None;
 
-                    // 走到箱子附近时线会自动消失，这里同步取消高亮
+                    // 走到箱子附近时标记会自动消失，这里同步取消高亮
                     RefreshSelectionHighlight();
+
+                    // 面板开着期间同步「已获取」标记（比如刚开过箱子再按热键打开）
+                    if (Time.unscaledTime >= _nextLootedCheck)
+                    {
+                        _nextLootedCheck = Time.unscaledTime + 0.5f;
+                        RefreshLootedLabels();
+                    }
 
                     UnityEngine.InputSystem.Keyboard keyboard = UnityEngine.InputSystem.Keyboard.current;
                     if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)

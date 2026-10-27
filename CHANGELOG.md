@@ -2,6 +2,15 @@
 
 本项目遵循 [语义化版本](https://semver.org/lang/zh-CN/) 与 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式。
 
+## [0.1.12] - 2026-10-28
+
+### 新增
+
+- **扫描面板标记「已获取」**：本次战局里已经打开过的物资箱，列表标题后追加绿色「已获取」并把箱子名压暗。
+  判定复用原版：`InteractableLootbox.Looted`（LootView 记录）或
+  `Inventory.hasBeenInspectedInLootBox`（交互结束即置 true）。
+  面板打开期间每 0.5 秒同步一次，开过箱子后按热键重开也能正确显示。
+
 ## [0.1.11] - 2026-10-28
 
 ### 修复
