@@ -64,6 +64,31 @@ internal static class ModSettingAPI
 
 	public static bool IsInit { get; private set; }
 
+	/// <summary>ModSetting 程序集是否已经加载（不打印任何日志，供重试循环静默探测）。</summary>
+	public static bool IsAssemblyLoaded()
+	{
+		return FindTypeSilently("ModSetting.ModBehaviour") != null;
+	}
+
+	private static Type FindTypeSilently(string typeName)
+	{
+		Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+		for (int i = 0; i < assemblies.Length; i++)
+		{
+			try
+			{
+				Type type = assemblies[i].GetType(typeName);
+				if (type != null)
+					return type;
+			}
+			catch
+			{
+			}
+		}
+
+		return null;
+	}
+
 	/// <summary>
 	/// ModSetting 内部是否已经完成初始化（已读过它自己的存档）。
 	/// Add* 调用会被它排队，但 GetSavedValue 不会——必须等它 isInit 才能读到上次保存的值。

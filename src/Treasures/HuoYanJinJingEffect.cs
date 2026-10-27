@@ -229,6 +229,7 @@ namespace MagicTreasurePower.Treasures
                 return groups;
 
             Vector3 origin = main.transform.position;
+            LockedRoomContext lockedRooms = BuildLockedRoomContext(main);
 
             InteractableLootbox[] boxes;
             try
@@ -270,7 +271,7 @@ namespace MagicTreasurePower.Treasures
                     }
 
                     // 锁着的房间（例如农场镇邪教房）：玩家打不开那扇门时，房间里的箱子不展示
-                    if (IsBehindLockedRoom(box.transform.position, main))
+                    if (IsBehindLockedRoom(box.transform.position, lockedRooms))
                     {
                         Diag.Log($"火眼金睛：跳过锁房里的物资箱「{BoxNameOf(box)}」（缺少开门钥匙）");
                         continue;
@@ -339,7 +340,7 @@ namespace MagicTreasurePower.Treasures
                         if (value <= 0)
                             continue;
 
-                        if (IsBehindLockedRoom(item.transform.position, main))
+                        if (IsBehindLockedRoom(item.transform.position, lockedRooms))
                         {
                             Diag.Log("火眼金睛：跳过锁房里的地面物品「" + item.DisplayName + "」");
                             continue;
@@ -466,41 +467,39 @@ namespace MagicTreasurePower.Treasures
             return item.GetComponentInChildren<Renderer>(true) != null;
         }
 
-        /// <summary>
-        /// 箱子是否在「玩家打不开的锁门」后面。
-        ///
-        /// <para>原理：锁着的门（<see cref="Door"/> 上挂了 requireItem）会启用 NavmeshCut，
-        /// 把房间从寻路图上切断（<see cref="GraphNode.Area"/> 连通分量不同）；
-        /// 没锁的门 NavmeshCut 是关的，不影响连通性。</para>
-        ///
-        /// <para>判定步骤：</para>
-        /// <list type="number">
-        ///   <item>箱子与玩家在同一连通区域 → 能走过去，放行；</item>
-        ///   <item>否则遍历所有「关着的、玩家打不开的」锁门，在门两侧采样寻路节点，
-        ///         若箱子的连通区域正好是这扇门隔出来的 → 锁房，排除；</item>
-        ///   <item>玩家有钥匙（或已录入）的门不算隔断，房间照常显示。</item>
-        /// </list>
-        /// </summary>
-        private static bool IsBehindLockedRoom(Vector3 boxPos, CharacterMainControl main)
+        /// <summary>一次扫描内共享的锁房信息：玩家连通分量、被锁门隔出来的区域。</summary>
+        private sealed class LockedRoomContext
         {
+            internal AstarPath Astar;
+            internal bool Available;
+            internal uint PlayerArea;
+            internal readonly HashSet<uint> BlockedAreas = new HashSet<uint>();
+            internal readonly List<Vector3> DoorPositions = new List<Vector3>();
+        }
+
+        /// <summary>
+        /// 扫描开始时构建一次：找出所有「关着的、玩家打不开的」锁门，
+        /// 在门两侧采样并记录它们隔出来的连通分量。
+        ///
+        /// <para>以前是每处理一个箱子就重新 FindObjectsOfType&lt;Door&gt; + 采样一遍，
+        /// 箱子/地面物品多的时候会卡；现在每次扫描只做一次。</para>
+        /// </summary>
+        private static LockedRoomContext BuildLockedRoomContext(CharacterMainControl main)
+        {
+            var context = new LockedRoomContext();
+
             try
             {
                 AstarPath astar = AstarPath.active;
                 if (astar == null || main == null)
-                    return false;
+                    return context;
 
                 NNInfo playerInfo = astar.GetNearest(main.transform.position, NNConstraint.Walkable);
                 if (playerInfo.node == null)
-                    return false;
+                    return context;
 
-                uint playerArea = playerInfo.node.Area;
-
-                NNInfo boxInfo = astar.GetNearest(boxPos, NNConstraint.Walkable);
-                bool hasLocalNode = boxInfo.node != null &&
-                                    (boxInfo.position - boxPos).sqrMagnitude <= 9f;
-
-                if (hasLocalNode && boxInfo.node.Area == playerArea)
-                    return false;
+                context.Astar = astar;
+                context.PlayerArea = playerInfo.node.Area;
 
                 Door[] doors = UnityEngine.Object.FindObjectsOfType<Door>();
 
@@ -515,30 +514,25 @@ namespace MagicTreasurePower.Treasures
                         continue;
 
                     if (CanUseRequiredItem(interact, main))
-                        continue; // 有钥匙，这扇门挡不住
+                        continue; // 有钥匙 / 已录入，这扇门挡不住
 
-                    if (!hasLocalNode)
-                    {
-                        // 箱子附近完全没有寻路节点（房间被切得很干净）：门就在旁边就当锁房
-                        if ((door.transform.position - boxPos).sqrMagnitude <= 625f)
-                            return true;
-                        continue;
-                    }
-
-                    if (DoorSeparatesArea(astar, door, boxInfo.node.Area))
-                        return true;
+                    context.DoorPositions.Add(door.transform.position);
+                    SampleDoorAreas(astar, door, context.PlayerArea, context.BlockedAreas);
                 }
+
+                context.Available = true;
             }
             catch (Exception e)
             {
-                Diag.Warn($"火眼金睛：锁房判定失败（{e.GetType().Name}），本次不排除");
+                Diag.Warn("火眼金睛：锁房上下文构建失败（" + e.GetType().Name + "），本次不排除锁房");
             }
 
-            return false;
+            return context;
         }
 
-        /// <summary>门两侧采样，判断给定连通分量是否是这扇门隔出来的。</summary>
-        private static bool DoorSeparatesArea(AstarPath astar, Door door, uint area)
+        /// <summary>门两侧采样，把「不是玩家所在连通分量」的区域记进 blocked。</summary>
+        private static void SampleDoorAreas(
+            AstarPath astar, Door door, uint playerArea, HashSet<uint> blocked)
         {
             Vector3 pos = door.transform.position;
             Vector3 right = door.transform.right;
@@ -565,10 +559,43 @@ namespace MagicTreasurePower.Treasures
                         if ((info.position - sample).sqrMagnitude > 9f)
                             continue;
 
-                        if (info.node.Area == area)
-                            return true;
+                        uint area = info.node.Area;
+                        if (area != playerArea)
+                            blocked.Add(area);
                     }
                 }
+            }
+        }
+
+        /// <summary>目标位置是否在「玩家打不开的锁门」隔出来的区域里。</summary>
+        private static bool IsBehindLockedRoom(Vector3 position, LockedRoomContext context)
+        {
+            try
+            {
+                if (context == null || !context.Available || context.Astar == null)
+                    return false;
+
+                NNInfo info = context.Astar.GetNearest(position, NNConstraint.Walkable);
+
+                bool hasLocalNode = info.node != null &&
+                                    (info.position - position).sqrMagnitude <= 9f;
+
+                if (hasLocalNode)
+                {
+                    return info.node.Area != context.PlayerArea &&
+                           context.BlockedAreas.Contains(info.node.Area);
+                }
+
+                // 附近完全没有寻路节点（房间被切得很干净）：门在旁边就按锁房处理
+                for (int i = 0; i < context.DoorPositions.Count; i++)
+                {
+                    if ((context.DoorPositions[i] - position).sqrMagnitude <= 625f)
+                        return true;
+                }
+            }
+            catch (Exception e)
+            {
+                Diag.Warn("火眼金睛：锁房判定失败（" + e.GetType().Name + "），本次不排除");
             }
 
             return false;

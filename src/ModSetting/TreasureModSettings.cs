@@ -37,6 +37,10 @@ namespace MagicTreasurePower.ModSettingIntegration
             if (_registered)
                 return true;
 
+            // 程序集都没加载时直接等下一轮，避免 Init 每次打一条「找不到程序集」警告
+            if (!ModSettingAPI.IsAssemblyLoaded())
+                return false;
+
             bool initialized;
             try
             {

@@ -174,6 +174,8 @@ namespace MagicTreasurePower.Treasures
                 return;
 
             int syncedShops = 0;
+            int addedEntries = 0;
+
             foreach (StockShop shop in Object.FindObjectsOfType<StockShop>())
             {
                 if (shop == null || shop.MerchantID != MerchantId)
@@ -183,14 +185,24 @@ namespace MagicTreasurePower.Treasures
                 if (!shop.gameObject.activeInHierarchy)
                     continue;
 
-                SyncShop(shop, dbEntry);
-                TryCacheItemInstances(shop);
+                bool added = SyncShop(shop, dbEntry);
                 syncedShops++;
+
+                if (added)
+                {
+                    // 只有真的补了新条目时才重建物品实例缓存
+                    TryCacheItemInstances(shop);
+                    addedEntries++;
+                }
             }
 
-            Diag.Log(
-                $"售货机上架完成：火眼金睛（ID {TreasureIds.HuoYanJinJing}，" +
-                $"单价 {TargetPrice} 元，库存 {MaxStock}），已同步 {syncedShops} 台售货机");
+            // 每个场景都会调用一次 Apply：没有新增条目就不刷日志，避免日志被刷屏
+            if (addedEntries > 0)
+            {
+                Diag.Log(
+                    $"售货机上架完成：火眼金睛（ID {TreasureIds.HuoYanJinJing}，" +
+                    $"单价 {TargetPrice} 元，库存 {MaxStock}），已同步 {syncedShops} 台售货机");
+            }
         }
 
         private static StockShopDatabase GetDatabase()
@@ -253,7 +265,7 @@ namespace MagicTreasurePower.Treasures
         }
 
         /// <summary>同步一台已经存在的售货机：补上缺失的条目、设置回购价。</summary>
-        private static void SyncShop(StockShop shop, StockShopDatabase.ItemEntry dbEntry)
+        private static bool SyncShop(StockShop shop, StockShopDatabase.ItemEntry dbEntry)
         {
             if (shop.entries == null)
                 shop.entries = new List<StockShop.Entry>();
@@ -264,6 +276,7 @@ namespace MagicTreasurePower.Treasures
             int typeId = dbEntry.typeID;
 
             StockShop.Entry entry = shop.entries.Find(e => e != null && e.ItemTypeID == typeId);
+            bool added = entry == null;
 
             if (entry == null)
             {
@@ -280,6 +293,7 @@ namespace MagicTreasurePower.Treasures
             }
 
             EnsureSellingPrice(shop, typeId, dbEntry.priceFactor);
+            return added;
         }
 
         /// <summary>

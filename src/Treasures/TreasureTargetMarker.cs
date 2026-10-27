@@ -1,5 +1,6 @@
 using System;
 using Duckov.Utilities;
+using ItemStatsSystem;
 using MagicTreasurePower.UI;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -159,6 +160,15 @@ namespace MagicTreasurePower.Treasures
                 {
                     if (TargetId != 0)
                         ClearTarget();
+                    return;
+                }
+
+                // 目标是地面物品、已经被捡进背包 / 槽位时，标记也该收掉
+                Item targetItem = _target.GetComponent<Item>();
+                if (targetItem != null &&
+                    (targetItem.InInventory != null || targetItem.PluggedIntoSlot != null))
+                {
+                    ClearTarget();
                     return;
                 }
 

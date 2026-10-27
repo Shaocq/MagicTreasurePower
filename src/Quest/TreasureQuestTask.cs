@@ -716,6 +716,26 @@ namespace MagicTreasurePower.Quests
                 if (box == null)
                     return;
 
+                // 宠物背包、尸体掉落等「挂在对象自己身上的容器」不算物资箱
+                if (box.GetComponent<Inventory>() != null)
+                    return;
+
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main != null && box.transform.IsChildOf(main.transform))
+                    return;
+
+                try
+                {
+                    LevelManager manager = LevelManager.Instance;
+                    PetProxy pet = manager != null ? manager.PetProxy : null;
+                    if (pet != null && pet.transform != null &&
+                        box.transform.IsChildOf(pet.transform))
+                        return;
+                }
+                catch
+                {
+                }
+
                 if (!_runLootBoxIds.Add(box.GetInstanceID()))
                     return;
 
