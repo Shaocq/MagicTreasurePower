@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using Duckov.UI.Animations;
 using MagicTreasurePower.Treasures;
 using TMPro;
@@ -419,11 +420,11 @@ namespace MagicTreasurePower.UI
                     return;
                 }
 
-                TreasureRouteLine.Toggle(group.Box);
+                TreasureTargetMarker.Toggle(group.Box);
 
                 // 选中了新的带路目标就关掉面板，好让玩家立刻看到脚下的绿线；
                 // 再点同一行是取消，面板保持打开
-                if (TreasureRouteLine.ActiveBoxId == group.BoxId)
+                if (TreasureTargetMarker.ActiveBoxId == group.BoxId)
                 {
                     Close();
                     return;
@@ -451,7 +452,7 @@ namespace MagicTreasurePower.UI
         /// <summary>把「当前带路目标」的那一行标成金色底。</summary>
         private static void RefreshSelectionHighlight()
         {
-            int active = TreasureRouteLine.ActiveBoxId;
+            int active = TreasureTargetMarker.ActiveBoxId;
 
             foreach (KeyValuePair<int, Image> pair in BoxHeaderBackgrounds)
             {
@@ -662,26 +663,92 @@ namespace MagicTreasurePower.UI
                         return;
                     }
 
-                    if (IsOpen)
+                    Key key = ModConfig.Current.ScanKey;
+                    if (key == Key.None)
                         return;
+
+                    Keyboard keyboard = Keyboard.current;
+                    if (keyboard == null || keyboard[key] == null || !keyboard[key].wasPressedThisFrame)
+                        return;
+
+                    // 面板开着时，再按一次 = 关闭（快捷键要能双向切换）
+                    if (IsOpen)
+                    {
+                        Close();
+                        return;
+                    }
 
                     // 死亡 / 撤离过程中不重开面板，避免挡住结算界面
                     CharacterMainControl main = CharacterMainControl.Main;
                     if (main == null || (main.Health != null && main.Health.IsDead))
                         return;
 
-                    Key key = ModConfig.Current.ScanKey;
-                    if (key == Key.None)
+                    // 游戏设置 / 暂停菜单 / 其它界面打开时不呼出：
+                    // 否则在 ModSetting 里改快捷键时按一下就会弹出扫描面板
+                    if (IsGameUiOpen())
                         return;
 
-                    Keyboard keyboard = Keyboard.current;
-                    if (keyboard != null && keyboard[key] != null && keyboard[key].wasPressedThisFrame)
-                        ReopenLast();
+                    ReopenLast();
                 }
                 catch
                 {
                     // 输入系统不可用时忽略
                 }
+            }
+        }
+
+        /// <summary>
+        /// 游戏 UI（暂停菜单 / 设置页 / 背包等）是否正在显示。
+        /// 仅用于热键：这些界面开着时不呼出扫描面板，但面板已经开着时仍然允许用热键关闭。
+        /// </summary>
+        private static bool IsGameUiOpen()
+        {
+            try
+            {
+                PauseMenu pause = PauseMenu.Instance;
+                if (pause != null && pause.Shown)
+                    return true;
+
+                if (Duckov.UI.View.ActiveView != null)
+                    return true;
+
+                // 设置页（含 ModSetting 的「模组设置」标签）：OptionsPanel 的 FadeGroup 正在显示
+                UIPanel[] panels = UnityEngine.Object.FindObjectsOfType<UIPanel>();
+                for (int i = 0; i < panels.Length; i++)
+                {
+                    UIPanel panel = panels[i];
+                    if (panel == null)
+                        continue;
+
+                    if (panel.GetType().Name.IndexOf("Options", StringComparison.OrdinalIgnoreCase) < 0)
+                        continue;
+
+                    FadeGroup group = GetFadeGroup(panel);
+                    if (group != null && group.IsShown)
+                        return true;
+                }
+            }
+            catch
+            {
+                // UI 状态取不到时按「没开」处理，宁可允许呼出
+            }
+
+            return false;
+        }
+
+        private static FadeGroup GetFadeGroup(UIPanel panel)
+        {
+            try
+            {
+                FieldInfo info = typeof(UIPanel).GetField(
+                    "fadeGroup",
+                    BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+
+                return info != null ? info.GetValue(panel) as FadeGroup : null;
+            }
+            catch
+            {
+                return null;
             }
         }
 

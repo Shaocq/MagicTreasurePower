@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace MagicTreasurePower
 {
     /// <summary>
@@ -24,8 +26,9 @@ namespace MagicTreasurePower
     /// 17353 | HunYuanJinDou      | 混元金斗   | 0        | hyjd.png  | 注册顺序 4，暂定数值
     /// 17354 | JinJiaoJian        | 金蛟剪     | 0        | jjj.png   | 注册顺序 5，暂定数值
     /// 17355 | JiuLongLiHuoZhao   | 九龙离火罩 | 0        | jllhz.png | 注册顺序 6，暂定数值
-    /// 17356 | HuoYanJinJing      | 火眼金睛   | 0        | hyjj.png  | 注册顺序 7，战局物资扫描
-    /// 17357 | （尚未分配）        | —          | —        | —         | 后续扩展
+    /// 17356 | TreasureBox        | 法宝宝箱   | 0        | bxtm.png  | 任务奖励箱（**一直被 TreasureBoxItem 占用，不要再分配给法宝**）
+    /// 17357 | HuoYanJinJing      | 火眼金睛   | 0        | hyjj.png  | 注册顺序 7，战局物资扫描
+    /// 17358 | （尚未分配）        | —          | —        | —         | 后续扩展
     /// ...   | ...                | ...        | ...      | ...       | ...
     /// 17399 | 区间末尾            | —          | —        | —         | 暂时保留
     /// </code>
@@ -56,13 +59,45 @@ namespace MagicTreasurePower
         /// <summary>九龙离火罩。</summary>
         internal const int JiuLongLiHuoZhao = 17355;
 
+        /// <summary>法宝宝箱（任务奖励箱）。</summary>
+        internal const int TreasureBox = 17356;
+
         /// <summary>火眼金睛。</summary>
-        internal const int HuoYanJinJing = 17356;
+        internal const int HuoYanJinJing = 17357;
 
         /// <summary>判断某个 TypeID 是否属于本 mod 的法宝 ID 段。</summary>
         internal static bool IsInRange(int typeId)
         {
             return typeId >= RangeStart && typeId <= RangeEnd;
+        }
+
+        /// <summary>
+        /// 启动自检：法宝 ID 与法宝宝箱 ID 不能重复。
+        ///
+        /// <para>2026-10-28 踩过的坑：法宝宝箱一直私占 17356 但没登记进本表，
+        /// 新法宝按表选了 17356 后，宝箱注册被跳过、任务奖励全变成新法宝。
+        /// 现在宝箱 ID 也收进本类（<see cref="TreasureBox"/>），并由这里在启动时兜底检查。</para>
+        /// </summary>
+        internal static void ValidateUnique()
+        {
+            var seen = new Dictionary<int, string>
+            {
+                { TreasureBox, "法宝宝箱" },
+            };
+
+            foreach (Treasures.TreasureDefinition definition in Treasures.TreasureCatalog.All)
+            {
+                string owner;
+                if (seen.TryGetValue(definition.TypeId, out owner))
+                {
+                    Diag.Warn(
+                        $"物品 ID 冲突：法宝「{definition.DisplayName}」与「{owner}」都使用 {definition.TypeId}，请修改 TreasureIds");
+                }
+                else
+                {
+                    seen[definition.TypeId] = definition.DisplayName;
+                }
+            }
         }
 
         /// <summary>ID 段说明，供启动日志输出。</summary>

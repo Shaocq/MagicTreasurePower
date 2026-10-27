@@ -68,6 +68,7 @@ namespace MagicTreasurePower
 
                 Diag.Log($"已加载：版本 {info.version}，目录 {info.path}");
                 Diag.Log(TreasureIds.Describe());
+                TreasureIds.ValidateUnique();
 
                 // 用户配置（config.ini，可在 BBMM 的 mod 条目菜单里编辑）
                 ModConfig.Load(info.path);
@@ -127,7 +128,7 @@ namespace MagicTreasurePower
                 HuoYanJinJingEffect.Unsubscribe();
 
                 // 带路绿线是独立的世界空间对象，停用时要清掉
-                TreasureRouteLine.Clear();
+                TreasureTargetMarker.Clear();
 
                 TreasureShopStock.Uninstall();
                 TreasureModSettings.Reset();

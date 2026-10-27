@@ -17,8 +17,8 @@ namespace MagicTreasurePower.Quests
     /// </summary>
     internal static class TreasureBoxItem
     {
-        /// <summary>宝箱物品 ID（在法宝预留段 17350~17399 内，不与七件法宝冲突）。</summary>
-        internal const int TypeId = 17356;
+        /// <summary>宝箱物品 ID（17356，登记在 <see cref="TreasureIds.TreasureBox"/>，法宝不要占用）。</summary>
+        internal const int TypeId = TreasureIds.TreasureBox;
 
         /// <summary>宝箱原型的 GameObject 名称前缀（Instantiate 后可能带 (Clone)）。</summary>
         internal const string PrototypeName = "MagicTreasurePower_TreasureBox";

@@ -14,9 +14,8 @@ namespace MagicTreasurePower.ModSettingIntegration
     ///
     /// <para><b>设置项：</b></para>
     /// <list type="bullet">
-    ///   <item>ScanHotkey：重开扫描面板的快捷键（按键绑定）；</item>
-    ///   <item>ShowRouteLine：是否允许带路绿线（开关）；</item>
-    ///   <item>ShopSellHuoYanJinJing：【测试用】火眼金睛 1 元上架基地售货机（开关）。</item>
+    ///   <item>ScanHotkey：呼出 / 关闭扫描面板的快捷键（按键绑定）；</item>
+    ///   <item>ShowRouteLine：是否允许「透视标记」（开关）。</item>
     /// </list>
     ///
     /// <para><b>持久化：</b>ModSetting 自己会把值存进 <c>persistentDataPath/ModSetting/ModSetting.json</c>，
@@ -27,7 +26,6 @@ namespace MagicTreasurePower.ModSettingIntegration
     {
         private const string KeyHotkey = "ScanHotkey";
         private const string KeyRoute = "ShowRouteLine";
-        private const string KeyShop = "ShopSellHuoYanJinJing";
 
         private static bool _registered;
 
@@ -58,21 +56,10 @@ namespace MagicTreasurePower.ModSettingIntegration
                 return false;
 
             ApplySavedValues();
-
-            // 存档值可能和 config.ini 不同：按最终值把售货机状态对齐一次
-            try
-            {
-                TreasureShopStock.SetEnabled(ModConfig.Current.ShopSellHuoYanJinJing);
-            }
-            catch (Exception e)
-            {
-                Diag.Report("按 ModSetting 存档值同步售货机状态失败", e);
-            }
-
             RegisterUi();
 
             _registered = true;
-            Diag.Log("ModSetting 设置页已注册：重开热键 / 带路线 / 售货机测试上架");
+            Diag.Log("ModSetting 设置页已注册：呼出热键 / 透视标记");
             return true;
         }
 
@@ -93,10 +80,6 @@ namespace MagicTreasurePower.ModSettingIntegration
                 if (ModSettingAPI.GetSavedValue(KeyRoute, out route))
                     config.ShowRouteLine = route;
 
-                bool shop;
-                if (ModSettingAPI.GetSavedValue(KeyShop, out shop))
-                    config.ShopSellHuoYanJinJing = shop;
-
                 Key key;
                 if (ModSettingAPI.GetSavedValue(KeyHotkey, out key) && key != Key.None)
                 {
@@ -106,8 +89,7 @@ namespace MagicTreasurePower.ModSettingIntegration
 
                 Diag.Log(
                     $"ModSetting 存档值：重开热键={config.ScanHotkeyText}，" +
-                    $"带路线={(config.ShowRouteLine ? "开" : "关")}，" +
-                    $"售货机测试上架={(config.ShopSellHuoYanJinJing ? "开" : "关")}");
+                    $"透视标记={(config.ShowRouteLine ? "开" : "关")}");
             }
             catch (Exception e)
             {
@@ -146,10 +128,10 @@ namespace MagicTreasurePower.ModSettingIntegration
                     }
                 });
 
-            // 2) 带路绿线开关
+            // 2) 透视标记开关
             ModSettingAPI.AddToggle(
                 KeyRoute,
-                "允许带路绿线（点箱子行从角色脚下画线）",
+                "允许透视标记（点箱子行时高亮箱子）",
                 config.ShowRouteLine,
                 value =>
                 {
@@ -160,39 +142,17 @@ namespace MagicTreasurePower.ModSettingIntegration
 
                         ModConfig.Current.ShowRouteLine = value;
                         if (!value)
-                            TreasureRouteLine.Clear();
+                            TreasureTargetMarker.Clear();
 
                         ModConfig.Persist();
-                        Diag.Log($"ModSetting：带路绿线 {(value ? "开" : "关")}");
+                        Diag.Log($"ModSetting：透视标记 {(value ? "开" : "关")}");
                     }
                     catch (Exception e)
                     {
-                        Diag.Report("应用带路线开关失败", e);
+                        Diag.Report("应用透视标记开关失败", e);
                     }
                 });
 
-            // 3) 测试期售货机上架开关
-            ModSettingAPI.AddToggle(
-                KeyShop,
-                "【测试用】火眼金睛 1 元上架基地售货机",
-                config.ShopSellHuoYanJinJing,
-                value =>
-                {
-                    try
-                    {
-                        if (ModBehaviour.Instance == null)
-                            return;
-
-                        ModConfig.Current.ShopSellHuoYanJinJing = value;
-                        TreasureShopStock.SetEnabled(value);
-                        ModConfig.Persist();
-                        Diag.Log($"ModSetting：售货机测试上架 {(value ? "开" : "关")}");
-                    }
-                    catch (Exception e)
-                    {
-                        Diag.Report("应用售货机上架开关失败", e);
-                    }
-                });
         }
     }
 }

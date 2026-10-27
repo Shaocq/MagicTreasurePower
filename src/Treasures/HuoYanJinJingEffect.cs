@@ -259,6 +259,15 @@ namespace MagicTreasurePower.Treasures
                         continue;
                     }
 
+                    // 只扫地图上的固定物资箱：
+                    //   - 玩家 / 宠物身上、被他们搬运的容器不算；
+                    //   - 尸体 / 掉落物（CreateFromItem 生成的容器）不算。
+                    if (IsCarriedOrOwned(box, main, inventory))
+                    {
+                        Diag.Log($"火眼金睛：跳过随身 / 搬运中的容器「{BoxNameOf(box)}」");
+                        continue;
+                    }
+
                     // 上锁且打不开的箱子直接跳过：展示了也拿不到
                     if (!CanOpen(main, box))
                     {
@@ -336,6 +345,90 @@ namespace MagicTreasurePower.Treasures
             }
 
             return groups;
+        }
+
+        /// <summary>
+        /// 是否是「玩家 / 宠物身上」或「他们正在搬运」的容器，以及从角色尸体上掉出来的容器。
+        /// 这些都不属于地图上的固定物资箱，扫描要排除。
+        /// </summary>
+        private static bool IsCarriedOrOwned(
+            InteractableLootbox box, CharacterMainControl main, Inventory inventory)
+        {
+            try
+            {
+                // CreateFromItem 生成的容器（尸体 / 掉落物）Inventory 挂在箱子自己身上，
+                // 地图固定物资箱的 Inventory 是由 Game 动态建在 LootBoxInventoriesParent 下。
+                if (box.GetComponent<Inventory>() != null)
+                    return true;
+
+                if (main != null)
+                {
+                    if (box.transform.IsChildOf(main.transform))
+                        return true;
+
+                    Item characterItem = main.CharacterItem;
+                    Inventory selfInventory = characterItem != null ? characterItem.Inventory : null;
+                    if (selfInventory != null)
+                    {
+                        if (ReferenceEquals(inventory, selfInventory))
+                            return true;
+
+                        // 从自己背包里拿出来的容器（AttachedToItem 指向背包内的物品）
+                        Item attached = inventory.AttachedToItem;
+                        if (attached != null && IsInside(attached, selfInventory))
+                            return true;
+                    }
+                }
+
+                PetProxy pet = null;
+                try
+                {
+                    LevelManager manager = LevelManager.Instance;
+                    pet = manager != null ? manager.PetProxy : null;
+                }
+                catch
+                {
+                }
+
+                if (pet != null)
+                {
+                    if (pet.transform != null && box.transform.IsChildOf(pet.transform))
+                        return true;
+
+                    Inventory petInventory = pet.Inventory;
+                    if (petInventory != null)
+                    {
+                        if (ReferenceEquals(inventory, petInventory))
+                            return true;
+
+                        Item attached = inventory.AttachedToItem;
+                        if (attached != null && IsInside(attached, petInventory))
+                            return true;
+                    }
+                }
+            }
+            catch
+            {
+                // 判断失败时按「不是随身物品」处理，避免整张图都扫不出来
+            }
+
+            return false;
+        }
+
+        /// <summary>物品是否在指定背包里（含嵌套容器）。</summary>
+        private static bool IsInside(Item item, Inventory inventory)
+        {
+            Item current = item;
+
+            for (int depth = 0; depth < 8 && current != null; depth++)
+            {
+                if (ReferenceEquals(current.InInventory, inventory))
+                    return true;
+
+                current = current.ParentItem;
+            }
+
+            return false;
         }
 
         /// <summary>物品价值口径：单件价值 × 堆叠数量（不把容器里装着的东西算进去）。</summary>
